@@ -1,0 +1,1227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arena | Atlas Pilot Explorer</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='12' fill='%230a0a0a'/><text x='50' y='68' font-size='48' text-anchor='middle' font-family='monospace' fill='%23c8ff00'>A</text></svg>">
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body style="margin:0; background:#0a0a0a;">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo, useEffect } = React;
+
+        // ============================================================================
+        // SVG ICON COMPONENTS (OUTSIDE main component)
+        // ============================================================================
+
+        const ArrowIcon = () => (
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <line x1="5" y1="12" x2="19" y2="12" />
+            <polyline points="12 5 19 12 12 19" />
+          </svg>
+        );
+
+        const CheckIcon = () => (
+          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        );
+
+        const ChevronLeftIcon = () => (
+          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+        );
+
+        const ChevronRightIcon = () => (
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        );
+
+        const CopyIcon = () => (
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+          </svg>
+        );
+
+        const RefreshIcon = () => (
+          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polyline points="23 4 23 10 17 10" />
+            <path d="M20.49 15a9 9 0 1 1-2-8.83" />
+          </svg>
+        );
+
+        const AtlasProspectExplorer = () => {
+          // ============================================================================
+          // STATE MANAGEMENT
+          // ============================================================================
+
+          const [currentScreen, setCurrentScreen] = useState('welcome');
+          const [selectedIndustry, setSelectedIndustry] = useState(null);
+          const [assessmentAnswers, setAssessmentAnswers] = useState({
+            challenge: null,
+            quantification: null,
+            dataCollected: [],
+            successMetric: null,
+          });
+          const [freeformText, setFreeformText] = useState('');
+          const [isAnalyzing, setIsAnalyzing] = useState(false);
+          const [analyzed, setAnalyzed] = useState(false);
+          const [detectedIndustry, setDetectedIndustry] = useState(null);
+          const [copied, setCopied] = useState(false);
+          const [hasSeenVideo, setHasSeenVideo] = useState(false);
+          const [showVideoModal, setShowVideoModal] = useState(false);
+
+          useEffect(() => {
+            if ((currentScreen === 'preview' || currentScreen === 'preview-freeform') && !hasSeenVideo) {
+              setShowVideoModal(true);
+            }
+          }, [currentScreen, hasSeenVideo]);
+
+          const dismissVideo = () => {
+            setShowVideoModal(false);
+            setHasSeenVideo(true);
+          };
+
+          // ============================================================================
+          // INDUSTRY DATA
+          // ============================================================================
+
+          const industries = {
+            semiconductor: {
+              id: 'semiconductor',
+              name: 'SEMICONDUCTOR',
+              description: 'Simulation-to-silicon gap · Post-silicon validation · Yield optimization',
+              challenges: [
+                'Post-silicon failures our simulation consistently misses',
+                'Yield-limiting defect patterns we can\'t isolate',
+                'Simulation models that diverge from fabricated silicon',
+                'Debug cycles that consume weeks instead of days',
+              ],
+              dataOptions: [
+                'ATE test results',
+                'Power/thermal traces',
+                'Wafer maps',
+                'JTAG/debug logs',
+                'Simulation output',
+                'Failure reports',
+                'Process metrology',
+              ],
+              successMetrics: [
+                'Faster root cause analysis',
+                'Fewer costly respins',
+                'Better sim-to-silicon correlation',
+                'Novel insights from existing data',
+              ],
+              timeMetric: 'debug cycles',
+              timeValue: '30-50%',
+              costValue: '$2-5M',
+              costContext: 'per avoided respin',
+              hypothesis: 'Atlas would correlate your ATE, thermal, and simulation data to surface post-silicon failure modes that your existing models miss, accelerating root cause identification.',
+              investigationAreas: [
+                'Correlation analysis between simulation predictions and silicon measurements',
+                'Automated failure pattern recognition across wafer maps and test results',
+                'Root cause clustering of yield-limiting defects',
+              ],
+              casestudy1: 'Top-5 semiconductor company identified yield-limiting defect patterns across 18 months of ATE data, surfacing 3 previously unknown failure modes.',
+              casestudy2: 'GPU design team reduced post-silicon debug time by 40% using Atlas to correlate simulation predictions with real silicon measurements.',
+              annualCostLow: 5, annualCostHigh: 15, costUnit: 'M',
+              quarterlyImpacts: ['1-2 potential mask respins at $2-5M each', '6-12 weeks of engineering debug time per cycle', 'Delayed tapeout pushing back revenue recognition'],
+            },
+            aerospace: {
+              id: 'aerospace',
+              name: 'AEROSPACE & DEFENSE',
+              description: 'Environmental stress testing · Structural reliability · Avionics verification',
+              challenges: [
+                'Environmental stress test results that don\'t match our models',
+                'Structural fatigue patterns we can\'t predict from simulation',
+                'Avionics verification gaps between lab and flight conditions',
+                'Reliability certification data that conflicts with field performance',
+              ],
+              dataOptions: [
+                'Flight telemetry',
+                'Vibration/stress data',
+                'Thermal profiles',
+                'Maintenance logs',
+                'Simulation output',
+                'Environmental test data',
+                'Certification records',
+              ],
+              successMetrics: [
+                'Faster certification cycles',
+                'Better reliability predictions',
+                'Reduced unplanned maintenance',
+                'Novel insights from test data',
+              ],
+              timeMetric: 'certification cycles',
+              timeValue: '20-35%',
+              costValue: '$100K-250K',
+              costContext: 'per program',
+              hypothesis: 'Atlas would analyze your environmental test and flight telemetry data to validate structural and avionics reliability margins, closing gaps between lab and field.',
+              investigationAreas: [
+                'Correlation analysis between environmental test conditions and field stress factors',
+                'Structural fatigue pattern recognition across sensor channels',
+                'Avionics reliability margin validation against certification requirements',
+              ],
+              casestudy1: 'Defense contractor validated structural reliability across 50+ sensor channels, reducing certification time by 6 months.',
+              casestudy2: 'Aerospace OEM identified stress factor interactions their simulation missed, preventing costly redesigns.',
+              annualCostLow: 2, annualCostHigh: 8, costUnit: 'M',
+              quarterlyImpacts: ['2-4 month certification delays per program', 'Unplanned maintenance events at $50-200K each', 'Reliability margin uncertainty blocking new contracts'],
+            },
+            medical: {
+              id: 'medical',
+              name: 'MEDICAL DEVICES',
+              description: 'Regulatory compliance · Device reliability · Sensor calibration',
+              challenges: [
+                'Device performance variance between lab testing and clinical use',
+                'Regulatory compliance gaps our current testing doesn\'t catch',
+                'Sensor calibration drift we can\'t explain with existing models',
+                'Reliability failures that only surface after deployment',
+              ],
+              dataOptions: [
+                'Test/validation records',
+                'Calibration data',
+                'Clinical performance data',
+                'Regulatory submission data',
+                'Manufacturing QC data',
+                'Field return data',
+              ],
+              successMetrics: [
+                'Faster regulatory approval',
+                'Better device reliability',
+                'Reduced field failures',
+                'Novel insights from compliance data',
+              ],
+              timeMetric: 'regulatory approval cycles',
+              timeValue: '25-40%',
+              costValue: '$75K-200K',
+              costContext: 'per product submission',
+              hypothesis: 'Atlas would correlate your clinical, manufacturing, and field data to identify regulatory compliance gaps and reliability issues before deployment.',
+              investigationAreas: [
+                'Device performance variance detection between lab and clinical use',
+                'Sensor calibration drift pattern analysis across patient populations',
+                'Reliability failure prediction from manufacturing and early use data',
+              ],
+              casestudy1: 'Medical device manufacturer strengthened reliability predictions, enabling faster approval of next-generation product.',
+              casestudy2: 'Cardiac device maker analyzed sensor drift across 10,000+ patient records, identifying unknown calibration issue and preventing market recall.',
+              annualCostLow: 1.5, annualCostHigh: 6, costUnit: 'M',
+              quarterlyImpacts: ['1-3 month regulatory submission delays', 'Field failure exposure risk (avg recall cost: $5-15M)', 'Compliance gaps consuming 20-30% of QA bandwidth'],
+            },
+            energy: {
+              id: 'energy',
+              name: 'ENERGY SYSTEMS',
+              description: 'Grid stability · Power electronics · Renewable integration',
+              challenges: [
+                'Grid anomalies our monitoring systems can\'t explain',
+                'Power electronics failures our thermal models don\'t predict',
+                'Renewable integration issues existing tools miss',
+                'Equipment degradation patterns we detect too late',
+              ],
+              dataOptions: [
+                'SCADA data',
+                'Sensor feeds',
+                'Grid telemetry',
+                'Maintenance records',
+                'Weather correlation data',
+                'Equipment specs',
+                'Outage logs',
+              ],
+              successMetrics: [
+                'Faster anomaly detection',
+                'Better grid stability predictions',
+                'Reduced equipment downtime',
+                'Novel insights from operational data',
+              ],
+              timeMetric: 'equipment downtime',
+              timeValue: '35-50%',
+              costValue: '$60K-180K',
+              costContext: 'per equipment class',
+              hypothesis: 'Atlas would analyze your SCADA and telemetry data to predict power electronics failures and grid stability issues before they impact operations.',
+              investigationAreas: [
+                'Power electronics thermal stress pattern recognition in variable conditions',
+                'Grid anomaly detection and root cause correlation',
+                'Equipment degradation prediction from operational data',
+              ],
+              casestudy1: 'Utility company identified converter stress patterns from 2 years of SCADA data, enabling predictive maintenance and preventing 3 major outages.',
+              casestudy2: 'Renewable energy provider improved system lifetime estimates by 15% using thermal stress analysis.',
+              annualCostLow: 1, annualCostHigh: 5, costUnit: 'M',
+              quarterlyImpacts: ['Unplanned outages at $100K-500K per incident', 'Deferred maintenance backlog increasing failure probability', 'Equipment lifecycle uncertainty blocking capex decisions'],
+            },
+          };
+
+          // ============================================================================
+          // UTILITY FUNCTIONS
+          // ============================================================================
+
+          const resetAssessment = () => {
+            setAssessmentAnswers({
+              challenge: null,
+              quantification: null,
+              dataCollected: [],
+              successMetric: null,
+            });
+          };
+
+          const analyzeChallenge = (text) => {
+            const lowerText = text.toLowerCase();
+
+            let detected = null;
+            if (lowerText.includes('silicon') || lowerText.includes('wafer') || lowerText.includes('tapeout') || lowerText.includes('eda') || lowerText.includes('spice') || lowerText.includes('post-silicon') || lowerText.includes('ate')) {
+              detected = 'semiconductor';
+            } else if (lowerText.includes('flight') || lowerText.includes('aircraft') || lowerText.includes('avionics') || lowerText.includes('structural') || lowerText.includes('aerospace') || lowerText.includes('fatigue') || lowerText.includes('vibration')) {
+              detected = 'aerospace';
+            } else if (lowerText.includes('fda') || lowerText.includes('medical') || lowerText.includes('clinical') || lowerText.includes('patient') || lowerText.includes('device') || lowerText.includes('regulatory') || lowerText.includes('sensor') || lowerText.includes('calibration')) {
+              detected = 'medical';
+            } else if (lowerText.includes('grid') || lowerText.includes('power') || lowerText.includes('energy') || lowerText.includes('renewable') || lowerText.includes('turbine') || lowerText.includes('converter') || lowerText.includes('scada')) {
+              detected = 'energy';
+            }
+
+            return detected;
+          };
+
+          const performAnalysis = () => {
+            if (freeformText.trim().length < 20) return;
+
+            setIsAnalyzing(true);
+            setTimeout(() => {
+              const industry = analyzeChallenge(freeformText);
+              setDetectedIndustry(industry);
+              setIsAnalyzing(false);
+              setAnalyzed(true);
+            }, 2000);
+          };
+
+          const goToPreviewFromFreeform = () => {
+            if (detectedIndustry) {
+              setSelectedIndustry(detectedIndustry);
+              setCurrentScreen('preview-freeform');
+            }
+          };
+
+          const selectIndustry = (industryId) => {
+            setSelectedIndustry(industryId);
+            resetAssessment();
+            setCurrentScreen('assessment');
+          };
+
+          const updateAssessment = (field, value) => {
+            setAssessmentAnswers((prev) => ({
+              ...prev,
+              [field]: value,
+            }));
+          };
+
+          const toggleDataOption = (option) => {
+            setAssessmentAnswers((prev) => ({
+              ...prev,
+              dataCollected: prev.dataCollected.includes(option)
+                ? prev.dataCollected.filter((item) => item !== option)
+                : [...prev.dataCollected, option],
+            }));
+          };
+
+          const canProceedToPreview = useMemo(() => {
+            return (
+              assessmentAnswers.challenge &&
+              assessmentAnswers.quantification &&
+              assessmentAnswers.successMetric &&
+              assessmentAnswers.dataCollected.length > 0
+            );
+          }, [assessmentAnswers]);
+
+          const goToPreview = () => {
+            if (canProceedToPreview) {
+              setCurrentScreen('preview');
+            }
+          };
+
+          const currentIndustryData = selectedIndustry ? industries[selectedIndustry] : null;
+
+          const timelinePhases = [
+            {
+              week: '0',
+              title: 'Scoping & Data Requirements',
+              description: 'Finalize data formats, access protocols, and success metrics',
+            },
+            {
+              week: '1-2',
+              title: 'Data Ingestion & First Insights',
+              description: 'Data ingested, preprocessed. Preliminary pattern discovery begins.',
+            },
+            {
+              week: '3-4',
+              title: 'Core Analysis & Hypothesis Testing',
+              description: 'Deep analysis against your challenge. Initial findings validated.',
+            },
+            {
+              week: '5',
+              title: 'Results Review',
+              description: 'Full results presentation and discussion with your technical team.',
+            },
+            {
+              week: '6',
+              title: 'Decision & Next Steps',
+              description: 'Evaluate results and define path forward: expand, scope next engagement, or capture learnings.',
+            },
+          ];
+
+          const generateDataRequirements = () => {
+            const base = ['Historical data (12+ months recommended)', 'Metadata about data collection conditions'];
+            if (assessmentAnswers.dataCollected.length > 0) {
+              return [...base, ...assessmentAnswers.dataCollected.map((d) => `${d} with timestamps and context`)];
+            }
+            return base;
+          };
+
+          const generateOnePageContent = () => {
+            const industry = currentIndustryData;
+            return `[ATLAS] PILOT PREVIEW
+Generated for: ${industry?.name}
+
+PRIMARY CHALLENGE
+${assessmentAnswers.challenge || (detectedIndustry ? 'Verified simulation-to-hardware gap' : 'N/A')}
+
+SUCCESS METRIC
+${assessmentAnswers.successMetric || 'Accelerated problem resolution'}
+
+WHAT ATLAS WOULD INVESTIGATE
+${industry?.hypothesis}
+
+INVESTIGATION FOCUS AREAS
+${industry?.investigationAreas.map((area, i) => `${i + 1}. ${area}`).join('\n')}
+
+6-WEEK PROOF OF CONCEPT TIMELINE
+Week 0: Scoping & data requirements
+Week 1-2: Data ingestion and first insights
+Week 3-4: Core analysis against hypothesis
+Week 5: Results review with your team
+Week 6: Decision and next steps
+
+ESTIMATED ANNUAL COST OF CURRENT GAP
+$${industry?.annualCostLow}-${industry?.annualCostHigh}${industry?.costUnit}/year (industry benchmark)
+
+ROI INDICATORS
+• Time: ${industry?.timeValue} reduction in ${industry?.timeMetric}
+• Cost: ${industry?.costValue} ${industry?.costContext}
+• Coverage: Patterns detected that existing tools miss
+
+DATA YOU'D NEED TO PROVIDE
+${generateDataRequirements().map((req, i) => `${i + 1}. ${req}`).join('\n')}
+
+Estimated preparation time: 1-2 weeks
+
+---
+Based on early Atlas deployments. Actual results vary by use case.`;
+          };
+
+          const copyToClipboard = () => {
+            navigator.clipboard.writeText(generateOnePageContent());
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+          };
+
+          // ============================================================================
+          // PERSISTENT HEADER COMPONENT
+          // ============================================================================
+
+          const PersistentHeader = () => (
+            <div className="fixed top-0 left-0 right-0 z-50" style={{ backgroundColor: '#0a0a0a', borderBottom: '1px solid #1a1a1a' }}>
+              <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+                <h1 className="text-lg font-mono font-bold" style={{ color: '#ffffff' }}>[Arena] Pilot Explorer</h1>
+                <button className="flex items-center gap-2 px-4 py-2 font-mono text-sm transition-all duration-200" style={{ border: '1px solid #c8ff00', color: '#c8ff00' }} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#c8ff00'; e.currentTarget.style.color = '#0a0a0a'; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#c8ff00'; }}>
+                  BOOK A TECHNICAL DEEP-DIVE <ArrowIcon />
+                </button>
+              </div>
+            </div>
+          );
+
+          // ============================================================================
+          // SCREEN: Welcome
+          // ============================================================================
+
+          if (currentScreen === 'welcome') {
+            return (
+              <div className="min-h-screen text-white" style={{ backgroundColor: '#0a0a0a' }}>
+                <PersistentHeader />
+
+                <div className="pt-20 px-6 py-16">
+                  <div className="max-w-4xl mx-auto">
+                    {/* Hero */}
+                    <div className="mb-16 text-center">
+                      <h1 className="text-5xl md:text-6xl font-mono font-bold mb-6" style={{ color: '#c8ff00' }}>[Arena] Pilot Explorer</h1>
+                      <p className="text-xl mb-8" style={{ color: '#9ca3af' }}>See what a proof of concept looks like for your team</p>
+                      <p className="text-base max-w-2xl mx-auto leading-relaxed" style={{ color: '#9ca3af' }}>
+                        Atlas is a physics-grounded AI platform that closes the gap between simulation and real-world hardware behavior. We help hardware teams identify failures that models miss and accelerate debug cycles.
+                      </p>
+                    </div>
+
+                    {/* Entry Points */}
+                    <div className="grid md:grid-cols-2 gap-6 mb-12">
+                      {/* Industry Path */}
+                      <button
+                        onClick={() => setCurrentScreen('industry')}
+                        className="p-8 transition-all duration-200"
+                        style={{ backgroundColor: '#111111', border: '1px solid #1a1a1a' }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#c8ff00'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#1a1a1a'; }}
+                      >
+                        <div className="text-3xl mb-4" style={{ color: '#c8ff00' }}>⊞</div>
+                        <h3 className="text-lg font-mono font-bold mb-3" style={{ color: '#ffffff' }}>EXPLORE BY INDUSTRY</h3>
+                        <p className="text-sm mb-6" style={{ color: '#9ca3af' }}>See how Atlas helps in your sector</p>
+                        <div className="flex items-center justify-between font-mono text-sm font-bold" style={{ color: '#c8ff00' }}>
+                          Continue <ChevronRightIcon />
+                        </div>
+                      </button>
+
+                      {/* Freeform Path */}
+                      <button
+                        onClick={() => {
+                          setAnalyzed(false);
+                          setFreeformText('');
+                          setIsAnalyzing(false);
+                          setDetectedIndustry(null);
+                          setCurrentScreen('freeform');
+                        }}
+                        className="p-8 transition-all duration-200"
+                        style={{ backgroundColor: '#111111', border: '1px solid #1a1a1a' }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#c8ff00'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#1a1a1a'; }}
+                      >
+                        <div className="text-3xl mb-4" style={{ color: '#c8ff00' }}>◆</div>
+                        <h3 className="text-lg font-mono font-bold mb-3" style={{ color: '#ffffff' }}>DESCRIBE YOUR CHALLENGE</h3>
+                        <p className="text-sm mb-6" style={{ color: '#9ca3af' }}>Tell us about your verification gap</p>
+                        <div className="flex items-center justify-between font-mono text-sm font-bold" style={{ color: '#c8ff00' }}>
+                          Continue <ChevronRightIcon />
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          // ============================================================================
+          // SCREEN: Industry Selection
+          // ============================================================================
+
+          if (currentScreen === 'industry') {
+            return (
+              <div className="min-h-screen text-white" style={{ backgroundColor: '#0a0a0a' }}>
+                <PersistentHeader />
+
+                <div className="pt-20 px-6 py-12">
+                  <div className="max-w-5xl mx-auto">
+                    {/* Header */}
+                    <div className="flex items-center gap-4 mb-12">
+                      <button
+                        onClick={() => setCurrentScreen('welcome')}
+                        className="p-2 rounded transition-colors"
+                        style={{ color: '#ffffff' }}
+                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#1a1a1a'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                      >
+                        <ChevronLeftIcon />
+                      </button>
+                      <h1 className="text-3xl font-mono font-bold" style={{ color: '#ffffff' }}>Select Your Industry</h1>
+                    </div>
+
+                    {/* Industry Cards */}
+                    <div className="grid md:grid-cols-2 gap-6 mb-12">
+                      {Object.values(industries).map((industry) => (
+                        <button
+                          key={industry.id}
+                          onClick={() => selectIndustry(industry.id)}
+                          className="p-6 text-left transition-all duration-200"
+                          style={{ backgroundColor: '#111111', border: '1px solid #1a1a1a' }}
+                          onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#c8ff00'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#1a1a1a'; }}
+                        >
+                          <h3 className="text-lg font-mono font-bold mb-2" style={{ color: '#c8ff00' }}>{industry.name}</h3>
+                          <p className="text-sm mb-6" style={{ color: '#9ca3af' }}>{industry.description}</p>
+                          <div className="flex items-center gap-2 font-mono text-sm font-bold" style={{ color: '#c8ff00' }}>
+                            Continue <ChevronRightIcon />
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Back Link */}
+                    <div className="text-center">
+                      <button
+                        onClick={() => setCurrentScreen('welcome')}
+                        className="text-sm transition-colors"
+                        style={{ color: '#9ca3af' }}
+                        onMouseEnter={(e) => { e.currentTarget.style.color = '#c8ff00'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.color = '#9ca3af'; }}
+                      >
+                        ← Back to Entry Point
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          // ============================================================================
+          // SCREEN: Assessment (Industry Path)
+          // ============================================================================
+
+          if (currentScreen === 'assessment') {
+            const industry = currentIndustryData;
+
+            return (
+              <div className="min-h-screen text-white" style={{ backgroundColor: '#0a0a0a' }}>
+                <PersistentHeader />
+
+                <div className="pt-20 px-6 py-12">
+                  <div className="max-w-3xl mx-auto">
+                    {/* Header */}
+                    <div className="flex items-center gap-4 mb-12">
+                      <button
+                        onClick={() => {
+                          setCurrentScreen('industry');
+                          setSelectedIndustry(null);
+                          resetAssessment();
+                        }}
+                        className="p-2 rounded transition-colors"
+                        style={{ color: '#ffffff' }}
+                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#1a1a1a'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                      >
+                        <ChevronLeftIcon />
+                      </button>
+                      <div>
+                        <h1 className="text-3xl font-mono font-bold" style={{ color: '#ffffff' }}>Challenge Assessment</h1>
+                        <p className="text-sm mt-2" style={{ color: '#9ca3af' }}>{industry?.name}</p>
+                      </div>
+                    </div>
+
+                    {/* Q1: Challenge */}
+                    <div className="p-8 mb-8" style={{ backgroundColor: '#111111', border: '1px solid #1a1a1a' }}>
+                      <h2 className="text-lg font-mono font-bold mb-6" style={{ color: '#c8ff00' }}>Q1: What's your primary verification challenge?</h2>
+                      <div className="space-y-3">
+                        {industry?.challenges.map((challenge, idx) => (
+                          <label key={idx} className="flex items-start gap-4 p-4 rounded cursor-pointer transition-colors" style={{ border: '1px solid #222222' }} onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#c8ff00'; }} onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#222222'; }}>
+                            <input
+                              type="radio"
+                              name="challenge"
+                              value={challenge}
+                              checked={assessmentAnswers.challenge === challenge}
+                              onChange={(e) => updateAssessment('challenge', e.target.value)}
+                              className="w-5 h-5 mt-1"
+                              style={{ accentColor: '#c8ff00' }}
+                            />
+                            <span className="text-sm" style={{ color: '#9ca3af' }}>{challenge}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Q2: Quantification */}
+                    <div className="p-8 mb-8" style={{ backgroundColor: '#111111', border: '1px solid #1a1a1a' }}>
+                      <h2 className="text-lg font-mono font-bold mb-6" style={{ color: '#c8ff00' }}>Q2: How well can you quantify this problem today?</h2>
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                        {[
+                          { value: 1, label: 'Know it exists' },
+                          { value: 2, label: 'Rough estimates' },
+                          { value: 3, label: 'Some metrics' },
+                          { value: 4, label: 'Specific data' },
+                          { value: 5, label: 'Fully quantified' },
+                        ].map((option) => (
+                          <button
+                            key={option.value}
+                            onClick={() => updateAssessment('quantification', option.value)}
+                            className="p-3 rounded border transition-all duration-200 text-center text-sm font-mono"
+                            style={{
+                              borderColor: assessmentAnswers.quantification === option.value ? '#c8ff00' : '#222222',
+                              backgroundColor: assessmentAnswers.quantification === option.value ? '#1a1a1a' : 'transparent',
+                              color: assessmentAnswers.quantification === option.value ? '#c8ff00' : '#9ca3af',
+                            }}
+                            onMouseEnter={(e) => {
+                              if (assessmentAnswers.quantification !== option.value) {
+                                e.currentTarget.style.borderColor = '#c8ff00';
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (assessmentAnswers.quantification !== option.value) {
+                                e.currentTarget.style.borderColor = '#222222';
+                              }
+                            }}
+                          >
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Q3: Data Collected */}
+                    <div className="p-8 mb-8" style={{ backgroundColor: '#111111', border: '1px solid #1a1a1a' }}>
+                      <h2 className="text-lg font-mono font-bold mb-6" style={{ color: '#c8ff00' }}>Q3: What data do you already collect? (Select all that apply)</h2>
+                      <div className="grid md:grid-cols-2 gap-3">
+                        {industry?.dataOptions.map((option, idx) => (
+                          <label key={idx} className="flex items-center gap-3 p-4 rounded cursor-pointer transition-colors" style={{ border: '1px solid #222222' }} onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#c8ff00'; }} onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#222222'; }}>
+                            <input
+                              type="checkbox"
+                              checked={assessmentAnswers.dataCollected.includes(option)}
+                              onChange={() => toggleDataOption(option)}
+                              className="w-5 h-5"
+                              style={{ accentColor: '#c8ff00' }}
+                            />
+                            <span className="text-sm" style={{ color: '#9ca3af' }}>{option}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Q4: Success Metric */}
+                    <div className="p-8 mb-8" style={{ backgroundColor: '#111111', border: '1px solid #1a1a1a' }}>
+                      <h2 className="text-lg font-mono font-bold mb-6" style={{ color: '#c8ff00' }}>Q4: What would success look like?</h2>
+                      <div className="space-y-3">
+                        {industry?.successMetrics.map((metric, idx) => (
+                          <label key={idx} className="flex items-start gap-4 p-4 rounded cursor-pointer transition-colors" style={{ border: '1px solid #222222' }} onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#c8ff00'; }} onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#222222'; }}>
+                            <input
+                              type="radio"
+                              name="successMetric"
+                              value={metric}
+                              checked={assessmentAnswers.successMetric === metric}
+                              onChange={(e) => updateAssessment('successMetric', e.target.value)}
+                              className="w-5 h-5 mt-1"
+                              style={{ accentColor: '#c8ff00' }}
+                            />
+                            <span className="text-sm" style={{ color: '#9ca3af' }}>{metric}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* CTA */}
+                    <div className="flex gap-4">
+                      <button
+                        onClick={() => {
+                          setCurrentScreen('industry');
+                          setSelectedIndustry(null);
+                          resetAssessment();
+                        }}
+                        className="flex-1 px-6 py-3 transition-all duration-200"
+                        style={{ border: '1px solid #1a1a1a', color: '#9ca3af' }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#c8ff00'; e.currentTarget.style.color = '#c8ff00'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#1a1a1a'; e.currentTarget.style.color = '#9ca3af'; }}
+                      >
+                        Back
+                      </button>
+                      <button
+                        onClick={goToPreview}
+                        disabled={!canProceedToPreview}
+                        className="flex-1 px-6 py-3 font-mono font-bold transition-all duration-200 flex items-center justify-center gap-2"
+                        style={{
+                          border: `1px solid ${canProceedToPreview ? '#c8ff00' : '#333333'}`,
+                          backgroundColor: canProceedToPreview ? '#c8ff00' : 'transparent',
+                          color: canProceedToPreview ? '#0a0a0a' : '#555555',
+                          cursor: canProceedToPreview ? 'pointer' : 'not-allowed',
+                        }}
+                        onMouseEnter={(e) => {
+                          if (canProceedToPreview) {
+                            e.currentTarget.style.backgroundColor = '#ffffff';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (canProceedToPreview) {
+                            e.currentTarget.style.backgroundColor = '#c8ff00';
+                          }
+                        }}
+                      >
+                        Continue <ChevronRightIcon />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          // ============================================================================
+          // SCREEN: Freeform (AI-Driven Challenge Description)
+          // ============================================================================
+
+          if (currentScreen === 'freeform') {
+            return (
+              <div className="min-h-screen text-white" style={{ backgroundColor: '#0a0a0a' }}>
+                <PersistentHeader />
+
+                <div className="pt-20 px-6 py-12">
+                  <div className="max-w-2xl mx-auto">
+                    {/* Header */}
+                    <div className="flex items-center gap-4 mb-12">
+                      <button
+                        onClick={() => setCurrentScreen('welcome')}
+                        className="p-2 rounded transition-colors"
+                        style={{ color: '#ffffff' }}
+                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#1a1a1a'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                      >
+                        <ChevronLeftIcon />
+                      </button>
+                      <h1 className="text-2xl font-mono font-bold" style={{ color: '#ffffff' }}>Tell us about your verification challenge</h1>
+                    </div>
+
+                    {/* Main Card */}
+                    <div className="p-8" style={{ backgroundColor: '#111111', border: '1px solid #1a1a1a' }}>
+                      {!analyzed ? (
+                        <>
+                          {/* Textarea */}
+                          <textarea
+                            value={freeformText}
+                            onChange={(e) => setFreeformText(e.target.value)}
+                            placeholder="Describe the gap between your simulation/models and real-world hardware behavior..."
+                            className="w-full h-40 rounded p-4 text-sm placeholder-opacity-50 focus:outline-none transition-colors font-mono"
+                            style={{
+                              backgroundColor: '#0a0a0a',
+                              border: '1px solid #222222',
+                              color: '#9ca3af',
+                              placeholderColor: '#555555',
+                            }}
+                            onFocus={(e) => { e.currentTarget.style.borderColor = '#c8ff00'; }}
+                            onBlur={(e) => { e.currentTarget.style.borderColor = '#222222'; }}
+                          />
+
+                          {/* Guiding Prompts */}
+                          <div className="mt-6 mb-6 flex flex-wrap gap-3">
+                            <button
+                              onClick={() => setFreeformText((t) => t + (t ? ' ' : '') + 'Our models don\'t match reality because...')}
+                              className="px-4 py-2 rounded text-sm font-mono transition-colors"
+                              style={{ border: '1px solid #333333', color: '#9ca3af' }}
+                              onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#c8ff00'; e.currentTarget.style.color = '#c8ff00'; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#333333'; e.currentTarget.style.color = '#9ca3af'; }}
+                            >
+                              Our models don't match reality because...
+                            </button>
+                            <button
+                              onClick={() => setFreeformText((t) => t + (t ? ' ' : '') + 'The biggest cost of this gap is...')}
+                              className="px-4 py-2 rounded text-sm font-mono transition-colors"
+                              style={{ border: '1px solid #333333', color: '#9ca3af' }}
+                              onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#c8ff00'; e.currentTarget.style.color = '#c8ff00'; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#333333'; e.currentTarget.style.color = '#9ca3af'; }}
+                            >
+                              The biggest cost of this gap is...
+                            </button>
+                          </div>
+
+                          {/* Analyze Button */}
+                          <button
+                            onClick={performAnalysis}
+                            disabled={freeformText.trim().length < 20}
+                            className="w-full py-3 font-mono font-bold transition-all duration-200 flex items-center justify-center gap-2"
+                            style={{
+                              border: `1px solid ${freeformText.trim().length < 20 ? '#333333' : '#c8ff00'}`,
+                              backgroundColor: freeformText.trim().length < 20 ? 'transparent' : '#c8ff00',
+                              color: freeformText.trim().length < 20 ? '#555555' : '#0a0a0a',
+                              cursor: freeformText.trim().length < 20 ? 'not-allowed' : 'pointer',
+                            }}
+                            onMouseEnter={(e) => {
+                              if (freeformText.trim().length >= 20) {
+                                e.currentTarget.style.backgroundColor = '#ffffff';
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (freeformText.trim().length >= 20) {
+                                e.currentTarget.style.backgroundColor = '#c8ff00';
+                              }
+                            }}
+                          >
+                            {isAnalyzing ? 'Analyzing...' : 'Analyze'} <ArrowIcon />
+                          </button>
+
+                          {/* Analyzing Animation */}
+                          {isAnalyzing && (
+                            <div className="mt-6 flex justify-center">
+                              <div className="flex gap-2">
+                                <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: '#c8ff00' }} />
+                                <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: '#c8ff00', animationDelay: '0.1s' }} />
+                                <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: '#c8ff00', animationDelay: '0.2s' }} />
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          {/* Analysis Results */}
+                          <div className="space-y-6">
+                            <div>
+                              <h3 className="font-mono font-bold mb-2" style={{ color: '#c8ff00' }}>Detected Vertical</h3>
+                              <p style={{ color: '#9ca3af' }}>
+                                {detectedIndustry
+                                  ? industries[detectedIndustry].name
+                                  : 'Identifying...'}
+                              </p>
+                            </div>
+
+                            {detectedIndustry && (
+                              <>
+                                <div>
+                                  <h3 className="font-mono font-bold mb-2" style={{ color: '#c8ff00' }}>Atlas Hypothesis</h3>
+                                  <p className="text-sm" style={{ color: '#9ca3af' }}>{industries[detectedIndustry].hypothesis}</p>
+                                </div>
+
+                                <div>
+                                  <h3 className="font-mono font-bold mb-2" style={{ color: '#c8ff00' }}>AI Interpretation</h3>
+                                  <p className="text-sm" style={{ color: '#9ca3af' }}>
+                                    Based on your description mentioning verification and simulation gaps, Atlas would focus on correlating your data to identify discrepancies that your current tools miss.
+                                  </p>
+                                </div>
+
+                                {/* Navigation */}
+                                <div className="flex gap-4 pt-4">
+                                  <button
+                                    onClick={() => {
+                                      setAnalyzed(false);
+                                      setFreeformText('');
+                                    }}
+                                    className="flex-1 px-6 py-3 transition-all duration-200"
+                                    style={{ border: '1px solid #1a1a1a', color: '#9ca3af' }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#c8ff00'; e.currentTarget.style.color = '#c8ff00'; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#1a1a1a'; e.currentTarget.style.color = '#9ca3af'; }}
+                                  >
+                                    Reset
+                                  </button>
+                                  <button
+                                    onClick={goToPreviewFromFreeform}
+                                    className="flex-1 px-6 py-3 font-mono font-bold transition-all duration-200 flex items-center justify-center gap-2"
+                                    style={{ border: '1px solid #c8ff00', backgroundColor: '#c8ff00', color: '#0a0a0a' }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#ffffff'; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#c8ff00'; }}
+                                  >
+                                    See Preview <ChevronRightIcon />
+                                  </button>
+                                </div>
+                              </>
+                            )}
+
+                            {!detectedIndustry && (
+                              <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(10,10,10,0.9)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+                                <div style={{ backgroundColor: '#111111', border: '1px solid #1a1a1a', maxWidth: '480px', width: '100%', padding: '32px' }}>
+                                  <h3 className="text-lg font-mono font-bold mb-2" style={{ color: '#c8ff00' }}>SELECT YOUR VERTICAL</h3>
+                                  <p className="text-sm mb-6" style={{ color: '#9ca3af' }}>
+                                    We couldn't automatically detect your industry from the description. Select the closest match so we can generate your pilot preview.
+                                  </p>
+                                  <div className="space-y-3">
+                                    {Object.values(industries).map((industry) => (
+                                      <button
+                                        key={industry.id}
+                                        onClick={() => setDetectedIndustry(industry.id)}
+                                        className="w-full p-4 text-left transition-all duration-200"
+                                        style={{ backgroundColor: '#0a0a0a', border: '1px solid #222222' }}
+                                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#c8ff00'; }}
+                                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#222222'; }}
+                                      >
+                                        <h4 className="font-mono font-bold text-sm mb-1" style={{ color: '#c8ff00' }}>{industry.name}</h4>
+                                        <p className="text-xs" style={{ color: '#6b7280' }}>{industry.description}</p>
+                                      </button>
+                                    ))}
+                                  </div>
+                                  <button
+                                    onClick={() => {
+                                      setAnalyzed(false);
+                                      setFreeformText('');
+                                    }}
+                                    className="w-full mt-4 py-2 text-sm font-mono transition-colors"
+                                    style={{ color: '#9ca3af', border: '1px solid #1a1a1a' }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#c8ff00'; e.currentTarget.style.color = '#c8ff00'; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#1a1a1a'; e.currentTarget.style.color = '#9ca3af'; }}
+                                  >
+                                    ← Start Over
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          // ============================================================================
+          // SCREEN: Preview (Both Paths)
+          // ============================================================================
+
+          if (currentScreen === 'preview' || currentScreen === 'preview-freeform') {
+            const industry = currentIndustryData;
+
+            return (
+              <div className="min-h-screen text-white" style={{ backgroundColor: '#0a0a0a' }}>
+                <PersistentHeader />
+
+                {showVideoModal && (
+                  <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.95)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
+                    <button
+                      onClick={dismissVideo}
+                      style={{ position: 'absolute', top: '24px', right: '24px', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', border: '1px solid #333333', backgroundColor: 'transparent', cursor: 'pointer' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#c8ff00'; e.currentTarget.style.color = '#c8ff00'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#333333'; e.currentTarget.style.color = '#6b7280'; }}
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                    <div style={{ maxWidth: '800px', width: '90%' }}>
+                      <video
+                        autoPlay
+                        playsInline
+                        controls
+                        onEnded={dismissVideo}
+                        style={{ width: '100%', borderRadius: '4px', border: '1px solid #1a1a1a' }}
+                        src="/arena-preview.mp4"
+                      />
+                      <p style={{ textAlign: 'center', marginTop: '16px', fontSize: '14px', fontFamily: 'monospace', color: '#6b7280' }}>
+                        Press ✕ to skip
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="pt-20 px-6 py-12">
+                  <div className="max-w-4xl mx-auto">
+                    {/* Header */}
+                    <div className="flex items-center gap-4 mb-12">
+                      <button
+                        onClick={() => {
+                          if (currentScreen === 'preview-freeform') {
+                            setCurrentScreen('freeform');
+                          } else {
+                            setCurrentScreen('assessment');
+                          }
+                        }}
+                        className="p-2 rounded transition-colors"
+                        style={{ color: '#ffffff' }}
+                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#1a1a1a'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                      >
+                        <ChevronLeftIcon />
+                      </button>
+                      <h1 className="text-3xl font-mono font-bold" style={{ color: '#ffffff' }}>Your Pilot Preview</h1>
+                      <div className="flex-1" />
+                      <button
+                        onClick={() => {
+                          setCurrentScreen('welcome');
+                          setSelectedIndustry(null);
+                          resetAssessment();
+                          setFreeformText('');
+                          setAnalyzed(false);
+                          setDetectedIndustry(null);
+                        }}
+                        className="p-2 rounded transition-colors"
+                        style={{ color: '#ffffff' }}
+                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#1a1a1a'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                      >
+                        <RefreshIcon />
+                      </button>
+                    </div>
+
+                    {/* Section A: What Atlas Would Investigate */}
+                    <section className="p-8 mb-8" style={{ backgroundColor: '#111111', border: '1px solid #1a1a1a' }}>
+                      <h2 className="text-2xl font-mono font-bold mb-6" style={{ color: '#c8ff00' }}>HERE'S WHAT ATLAS WOULD INVESTIGATE</h2>
+                      <p className="mb-6 leading-relaxed" style={{ color: '#9ca3af' }}>{industry?.hypothesis}</p>
+                      <div className="space-y-3">
+                        {industry?.investigationAreas.map((area, idx) => (
+                          <div key={idx} className="flex gap-3">
+                            <span className="font-mono font-bold flex-shrink-0" style={{ color: '#c8ff00' }}>{idx + 1}.</span>
+                            <span className="text-sm" style={{ color: '#9ca3af' }}>{area}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+
+                    {/* Section B: Cost of Inaction */}
+                    <section className="p-8 mb-8" style={{ border: '2px solid #c8ff00', backgroundColor: '#0a0a0a' }}>
+                      <p className="text-xs font-mono uppercase tracking-widest mb-4" style={{ color: '#9ca3af' }}>ESTIMATED ANNUAL COST OF YOUR CURRENT VERIFICATION GAP</p>
+                      <div className="flex items-baseline gap-1 mb-6">
+                        <span className="text-5xl font-mono font-bold" style={{ color: '#c8ff00' }}>${industry?.annualCostLow}</span>
+                        <span className="text-2xl font-mono" style={{ color: '#9ca3af' }}>&ndash;</span>
+                        <span className="text-5xl font-mono font-bold" style={{ color: '#c8ff00' }}>${industry?.annualCostHigh}{industry?.costUnit}</span>
+                        <span className="text-lg font-mono ml-2" style={{ color: '#6b7280' }}>/ year</span>
+                      </div>
+                      <p className="text-sm mb-4" style={{ color: '#9ca3af' }}>
+                        Based on {industry?.name?.toLowerCase()} benchmarks for organizations with {
+                          assessmentAnswers.quantification
+                            ? assessmentAnswers.quantification <= 2
+                              ? 'limited visibility into the gap'
+                              : assessmentAnswers.quantification <= 3
+                                ? 'partial metrics on the gap'
+                                : 'strong quantification of the gap'
+                            : 'verification challenges similar to yours'
+                        }.
+                      </p>
+                      <div className="space-y-2">
+                        <p className="text-xs font-mono uppercase" style={{ color: '#6b7280' }}>Every quarter without addressing this:</p>
+                        {industry?.quarterlyImpacts?.map((impact, idx) => (
+                          <div key={idx} className="flex items-start gap-2">
+                            <span className="text-xs mt-0.5" style={{ color: '#c8ff00' }}>→</span>
+                            <p className="text-sm" style={{ color: '#9ca3af' }}>{impact}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+
+                    {/* Section C: Timeline */}
+                    <section className="p-8 mb-8" style={{ backgroundColor: '#111111', border: '1px solid #1a1a1a' }}>
+                      <h2 className="text-2xl font-mono font-bold mb-8" style={{ color: '#c8ff00' }}>WHAT A 6-WEEK PROOF OF CONCEPT LOOKS LIKE</h2>
+                      <div className="space-y-6">
+                        {timelinePhases.map((phase, idx) => (
+                          <div key={idx} className="flex gap-6">
+                            <div className="flex flex-col items-center flex-shrink-0">
+                              <div className="w-10 h-10 rounded-full flex items-center justify-center font-mono font-bold text-sm" style={{ backgroundColor: '#c8ff00', color: '#0a0a0a' }}>
+                                {phase.week}
+                              </div>
+                              {idx < timelinePhases.length - 1 && <div className="w-0.5 h-16" style={{ backgroundColor: '#c8ff00' }} />}
+                            </div>
+                            <div className="pb-4">
+                              <h4 className="font-mono font-bold mb-2" style={{ color: '#ffffff' }}>{phase.title}</h4>
+                              <p className="text-sm" style={{ color: '#9ca3af' }}>{phase.description}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+
+                    {/* Section C: ROI Indicators */}
+                    <section className="p-8 mb-8" style={{ backgroundColor: '#111111', border: '1px solid #1a1a1a' }}>
+                      <h2 className="text-2xl font-mono font-bold mb-6" style={{ color: '#c8ff00' }}>POTENTIAL IMPACT</h2>
+                      <div className="grid md:grid-cols-3 gap-6 mb-6">
+                        <div style={{ border: '1px solid #1a1a1a', padding: '24px' }}>
+                          <p className="text-xs font-mono uppercase mb-2" style={{ color: '#9ca3af' }}>Time Saved</p>
+                          <p className="text-3xl font-mono font-bold mb-2" style={{ color: '#c8ff00' }}>{industry?.timeValue}</p>
+                          <p className="text-sm" style={{ color: '#9ca3af' }}>reduction in {industry?.timeMetric}</p>
+                        </div>
+                        <div style={{ border: '1px solid #1a1a1a', padding: '24px' }}>
+                          <p className="text-xs font-mono uppercase mb-2" style={{ color: '#9ca3af' }}>Cost Avoided</p>
+                          <p className="text-3xl font-mono font-bold mb-2" style={{ color: '#c8ff00' }}>{industry?.costValue}</p>
+                          <p className="text-sm" style={{ color: '#9ca3af' }}>{industry?.costContext}</p>
+                        </div>
+                        <div style={{ border: '1px solid #1a1a1a', padding: '24px' }}>
+                          <p className="text-xs font-mono uppercase mb-2" style={{ color: '#9ca3af' }}>Coverage</p>
+                          <p className="text-3xl font-mono font-bold mb-2" style={{ color: '#c8ff00' }}>Novel</p>
+                          <p className="text-sm" style={{ color: '#9ca3af' }}>patterns detected</p>
+                        </div>
+                      </div>
+                      <p className="text-xs font-mono" style={{ color: '#555555' }}>Based on early Atlas deployments. Actual results vary.</p>
+                    </section>
+
+                    {/* Section D: Data Requirements */}
+                    <section className="p-8 mb-8" style={{ backgroundColor: '#111111', border: '1px solid #1a1a1a' }}>
+                      <h2 className="text-2xl font-mono font-bold mb-6" style={{ color: '#c8ff00' }}>WHAT YOU'D NEED TO PROVIDE</h2>
+                      <ul className="space-y-3 mb-6">
+                        {generateDataRequirements().map((req, idx) => (
+                          <li key={idx} className="flex gap-3">
+                            <span style={{ color: '#c8ff00' }}>✓</span>
+                            <span className="text-sm" style={{ color: '#9ca3af' }}>{req}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="rounded p-4" style={{ backgroundColor: '#0a0a0a', border: '1px solid #1a1a1a' }}>
+                        <p className="text-sm font-mono" style={{ color: '#9ca3af' }}>
+                          <span style={{ color: '#c8ff00', fontWeight: 'bold' }}>Estimated prep time:</span> 1-2 weeks
+                        </p>
+                      </div>
+                    </section>
+
+                    {/* Section E: Case Studies */}
+                    <section className="p-8 mb-8" style={{ backgroundColor: '#111111', border: '1px solid #1a1a1a' }}>
+                      <h2 className="text-2xl font-mono font-bold mb-6" style={{ color: '#c8ff00' }}>SIMILAR CHALLENGES ATLAS HAS ADDRESSED</h2>
+                      <div className="space-y-4">
+                        <div className="pl-4 py-2" style={{ borderLeft: '2px solid #c8ff00' }}>
+                          <p className="text-sm" style={{ color: '#9ca3af' }}>{industry?.casestudy1}</p>
+                        </div>
+                        <div className="pl-4 py-2" style={{ borderLeft: '2px solid #c8ff00' }}>
+                          <p className="text-sm" style={{ color: '#9ca3af' }}>{industry?.casestudy2}</p>
+                        </div>
+                      </div>
+                      <p className="text-xs mt-6 font-mono" style={{ color: '#555555' }}>Company names and details anonymized.</p>
+                    </section>
+
+                    {/* Section F: Shareable One-Pager */}
+                    <section className="p-8 mb-8" style={{ backgroundColor: '#111111', border: '1px solid #1a1a1a' }}>
+                      <h2 className="text-2xl font-mono font-bold mb-6" style={{ color: '#c8ff00' }}>TAKE THIS BACK TO YOUR TEAM</h2>
+                      <div className="rounded p-6 font-mono text-xs max-h-64 overflow-y-auto mb-4 whitespace-pre-wrap break-words" style={{ backgroundColor: '#0a0a0a', border: '1px solid #222222', color: '#9ca3af' }}>
+                        {generateOnePageContent()}
+                      </div>
+                      <div className="flex gap-3 flex-wrap">
+                        <button
+                          onClick={copyToClipboard}
+                          className="flex items-center gap-2 px-6 py-3 font-mono font-bold transition-all duration-200"
+                          style={{
+                            border: '1px solid #c8ff00',
+                            backgroundColor: copied ? '#c8ff00' : '#c8ff00',
+                            color: copied ? '#0a0a0a' : '#0a0a0a',
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!copied) {
+                              e.currentTarget.style.backgroundColor = '#ffffff';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!copied) {
+                              e.currentTarget.style.backgroundColor = '#c8ff00';
+                            }
+                          }}
+                        >
+                          {copied ? (
+                            <>
+                              <CheckIcon />
+                              Copied!
+                            </>
+                          ) : (
+                            <>
+                              <CopyIcon />
+                              Copy to Clipboard
+                            </>
+                          )}
+                        </button>
+                        <a
+                          href={`mailto:?subject=${encodeURIComponent(`Atlas Pilot Preview — ${industry?.name}`)}&body=${encodeURIComponent(generateOnePageContent())}`}
+                          className="flex items-center gap-2 px-6 py-3 font-mono font-bold transition-all duration-200"
+                          style={{ border: '1px solid #1a1a1a', color: '#9ca3af' }}
+                          onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#c8ff00'; e.currentTarget.style.color = '#c8ff00'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#1a1a1a'; e.currentTarget.style.color = '#9ca3af'; }}
+                        >
+                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                          Email to Your Team
+                        </a>
+                      </div>
+                    </section>
+
+                    {/* Final CTA */}
+                    <section className="p-8 text-center" style={{ backgroundColor: '#111111', border: '1px solid #c8ff00' }}>
+                      <h2 className="text-2xl font-mono font-bold mb-4" style={{ color: '#c8ff00' }}>Ready to Explore Further?</h2>
+                      <p className="mb-8" style={{ color: '#9ca3af' }}>
+                        Schedule a 30-minute technical deep-dive with the Arena team to discuss your specific use case and data requirements.
+                      </p>
+                      <button className="px-8 py-3 font-mono font-bold transition-all duration-200 flex items-center justify-center gap-2 mx-auto" style={{ border: '1px solid #c8ff00', backgroundColor: '#c8ff00', color: '#0a0a0a' }} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#ffffff'; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#c8ff00'; }}>
+                        BOOK A TECHNICAL DEEP-DIVE <ArrowIcon />
+                      </button>
+                    </section>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          return null;
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(React.createElement(AtlasProspectExplorer));
+    </script>
+</body>
+</html>

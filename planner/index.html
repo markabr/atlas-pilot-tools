@@ -1,0 +1,1654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Arena | Atlas Pilot Success Planner</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='12' fill='%230a0a0a'/><text x='50' y='68' font-size='48' text-anchor='middle' font-family='monospace' fill='%23c8ff00'>A</text></svg>">
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/recharts@2.10.4/umd/Recharts.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .animate-spin {
+      animation: spin 1s linear infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    .animate-pulse {
+      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+  </style>
+</head>
+<body style="margin:0; background:#0a0a0a;">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useMemo, useEffect, useCallback } = React;
+    const { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ResponsiveContainer, Legend } = Recharts;
+
+    // ══════════════════════════════════════════════
+    // SVG ICON COMPONENTS
+    // ══════════════════════════════════════════════
+
+    const Shield = ({ size = 24, style = {}, ...props }) => (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={size} height={size} style={style} {...props}>
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      </svg>
+    );
+
+    const Database = ({ size = 24, style = {}, ...props }) => (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={size} height={size} style={style} {...props}>
+        <ellipse cx="12" cy="5" rx="9" ry="3"/>
+        <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+        <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+      </svg>
+    );
+
+    const AlertTriangle = ({ size = 24, style = {}, ...props }) => (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={size} height={size} style={style} {...props}>
+        <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/>
+        <line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+    );
+
+    const Target = ({ size = 24, style = {}, ...props }) => (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={size} height={size} style={style} {...props}>
+        <circle cx="12" cy="12" r="10"/>
+        <circle cx="12" cy="12" r="6"/>
+        <circle cx="12" cy="12" r="2"/>
+      </svg>
+    );
+
+    const Users = ({ size = 24, style = {}, ...props }) => (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={size} height={size} style={style} {...props}>
+        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+        <circle cx="9" cy="7" r="4"/>
+        <path d="M23 21v-2a4 4 0 00-3-3.87"/>
+        <path d="M16 3.13a4 4 0 010 7.75"/>
+      </svg>
+    );
+
+    const Zap = ({ size = 24, style = {}, ...props }) => (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={size} height={size} style={style} {...props}>
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+      </svg>
+    );
+
+    const CheckCircle2 = ({ size = 24, style = {}, ...props }) => (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={size} height={size} style={style} {...props}>
+        <circle cx="12" cy="12" r="10"/>
+        <path d="m9 12 2 2 4-4"/>
+      </svg>
+    );
+
+    const ChevronLeft = ({ size = 24, style = {}, ...props }) => (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={size} height={size} style={style} {...props}>
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+    );
+
+    const ChevronRight = ({ size = 24, style = {}, ...props }) => (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={size} height={size} style={style} {...props}>
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>
+    );
+
+    const Activity = ({ size = 24, style = {}, ...props }) => (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={size} height={size} style={style} {...props}>
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+      </svg>
+    );
+
+    const Clock = ({ size = 24, style = {}, ...props }) => (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={size} height={size} style={style} {...props}>
+        <circle cx="12" cy="12" r="10"/>
+        <polyline points="12 6 12 12 16 14"/>
+      </svg>
+    );
+
+    const BookOpen = ({ size = 24, style = {}, ...props }) => (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={size} height={size} style={style} {...props}>
+        <path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/>
+        <path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/>
+      </svg>
+    );
+
+    const BarChart3 = ({ size = 24, style = {}, ...props }) => (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={size} height={size} style={style} {...props}>
+        <path d="M18 20V10"/>
+        <path d="M12 20V4"/>
+        <path d="M6 20v-6"/>
+      </svg>
+    );
+
+    const Copy = ({ size = 24, style = {}, ...props }) => (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={size} height={size} style={style} {...props}>
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+        <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+      </svg>
+    );
+
+    const RotateCcw = ({ size = 24, style = {}, ...props }) => (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={size} height={size} style={style} {...props}>
+        <polyline points="1 4 1 10 7 10"/>
+        <path d="M3.51 15a9 9 0 102.13-9.36L1 10"/>
+      </svg>
+    );
+
+    const Plus = ({ size = 24, style = {}, ...props }) => (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={size} height={size} style={style} {...props}>
+        <line x1="12" y1="5" x2="12" y2="19"/>
+        <line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+    );
+
+    const Bookmark = ({ size = 24, style = {}, ...props }) => (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={size} height={size} style={style} {...props}>
+        <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/>
+      </svg>
+    );
+
+    const FileText = ({ size = 24, style = {}, ...props }) => (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={size} height={size} style={style} {...props}>
+        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="16" y1="13" x2="8" y2="13"/>
+        <line x1="16" y1="17" x2="8" y2="17"/>
+        <polyline points="10 9 9 9 8 9"/>
+      </svg>
+    );
+
+    const TrendingUp = ({ size = 24, style = {}, ...props }) => (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={size} height={size} style={style} {...props}>
+        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+        <polyline points="17 6 23 6 23 12"/>
+      </svg>
+    );
+
+    const TrendingDown = ({ size = 24, style = {}, ...props }) => (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={size} height={size} style={style} {...props}>
+        <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/>
+        <polyline points="17 18 23 18 23 12"/>
+      </svg>
+    );
+
+    const Minus = ({ size = 24, style = {}, ...props }) => (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={size} height={size} style={style} {...props}>
+        <line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+    );
+
+    const CheckCircle = CheckCircle2;
+    const ArrowRight = ({ size = 24, style = {}, ...props }) => (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={size} height={size} style={style} {...props}>
+        <line x1="5" y1="12" x2="19" y2="12"/>
+        <polyline points="12 5 19 12 12 19"/>
+      </svg>
+    );
+    const Menu = ({ size = 24, style = {}, ...props }) => (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={size} height={size} style={style} {...props}>
+        <line x1="3" y1="6" x2="21" y2="6"/>
+        <line x1="3" y1="12" x2="21" y2="12"/>
+        <line x1="3" y1="18" x2="21" y2="18"/>
+      </svg>
+    );
+    const Share2 = ({ size = 24, style = {}, ...props }) => (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={size} height={size} style={style} {...props}>
+        <circle cx="18" cy="5" r="3"/>
+        <circle cx="6" cy="12" r="3"/>
+        <circle cx="18" cy="19" r="3"/>
+        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+      </svg>
+    );
+    const Layout = ({ size = 24, style = {}, ...props }) => (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={size} height={size} style={style} {...props}>
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+        <line x1="3" y1="9" x2="21" y2="9"/>
+      </svg>
+    );
+    const Layers = ({ size = 24, style = {}, ...props }) => (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={size} height={size} style={style} {...props}>
+        <polygon points="12 2 2 7 2 17 12 22 22 17 22 7 12 2"/>
+        <polyline points="2 7 12 12 22 7"/>
+        <polyline points="2 17 12 12 22 17"/>
+      </svg>
+    );
+    const Play = ({ size = 24, style = {}, ...props }) => (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={size} height={size} style={style} {...props}>
+        <polygon points="5 3 19 12 5 21 5 3"/>
+      </svg>
+    );
+
+    // ══════════════════════════════════════════════
+    // CONSTANTS
+    // ══════════════════════════════════════════════
+
+    const VERTICALS = ["Semiconductor", "Aerospace & Defense", "Medical Devices", "Energy Systems"];
+
+    const CRITERIA = [
+      {
+        id: "verification_gap", title: "Verification Gap Clarity", weight: 3, icon: "Target",
+        question: "How clearly can the prospect articulate a specific gap between their simulation/modeling and real-world hardware behavior?",
+        riskNote: "A vague gap means Atlas has no clear entry point. Discovery must sharpen this before kickoff.",
+        options: [
+          { score: 1, label: "Vague", desc: '"We think AI could help us with testing somewhere."' },
+          { score: 2, label: "Directional", desc: '"We know our simulation doesn\'t always match silicon."' },
+          { score: 3, label: "Defined", desc: '"We see timing divergence in post-silicon validation on Product X."' },
+          { score: 4, label: "Specific", desc: '"Our power model diverges 12-18% at high temp corners on Block Y."' },
+          { score: 5, label: "Quantified", desc: '"SPICE diverges 15% on Block X, costing $2M per respin."' },
+        ],
+      },
+      {
+        id: "data_availability", title: "Data Availability", weight: 3, icon: "Database",
+        question: "Does the prospect have real production or validation data they can share, and how quickly can they grant access?",
+        riskNote: "Data access is the #1 variable in pilot success. Start legal/security review early — every week of delay compresses the verification window.",
+        options: [
+          { score: 1, label: "None", desc: '"We\'d need to create a synthetic dataset for you."' },
+          { score: 2, label: "Restricted", desc: '"We have data but legal/security would need 6+ weeks."' },
+          { score: 3, label: "Partial", desc: '"We can share historical test logs, not real-time feeds."' },
+          { score: 4, label: "Available", desc: '"2 years of ATE data. Security review takes ~2 weeks."' },
+          { score: 5, label: "Ready", desc: '"Data is centralized, documented, vendor sharing process exists."' },
+        ],
+      },
+      {
+        id: "champion_strength", title: "Champion Strength", weight: 2, icon: "Users",
+        question: "Is there a named individual who is personally invested in the outcome and has authority to act on results?",
+        riskNote: "Without an internal advocate with real authority, even successful technical results won't convert to a deployment.",
+        options: [
+          { score: 1, label: "No champion", desc: "Contact is from procurement or innovation scouting." },
+          { score: 2, label: "Interested IC", desc: "An engineer is curious but has no budget or influence." },
+          { score: 3, label: "Team lead", desc: "Validation lead wants to try Atlas. Some influence, limited budget." },
+          { score: 4, label: "Director", desc: "Director of Engineering, can allocate time and small budget." },
+          { score: 5, label: "VP/Exec", desc: "VP Engineering, owns the product line, has budget authority." },
+        ],
+      },
+      {
+        id: "technical_fit", title: "Technical Fit", weight: 2, icon: "Zap",
+        question: "Is the prospect's core problem physics-grounded — real-world hardware behavior that diverges from models?",
+        riskNote: "Atlas is purpose-built for physics-grounded problems. If the gap isn't physics-based, Atlas may demonstrate capability but not solve the customer's actual problem.",
+        options: [
+          { score: 1, label: "Not physics", desc: "Software, logistics, supply chain, or project management." },
+          { score: 2, label: "Tangential", desc: "Some hardware but core issue is process or tooling workflow." },
+          { score: 3, label: "Hardware-adjacent", desc: "Real hardware issue but existing EDA tools could plausibly solve." },
+          { score: 4, label: "Physics-grounded", desc: "Thermal, power, timing, or yield issue in real hardware." },
+          { score: 5, label: "Atlas-native", desc: "Sim-to-silicon gap or multi-physics anomaly that existing tools can't explain." },
+        ],
+      },
+      {
+        id: "org_readiness", title: "Organizational Readiness", weight: 1, icon: "Shield",
+        question: "Can the prospect's organization support a 6-week external vendor pilot — including legal, security, and IT approvals?",
+        riskNote: "Organizational friction is the most common cause of pilot failure. If approvals take 8 weeks, the pilot is dead before it starts.",
+        options: [
+          { score: 1, label: "No process", desc: "Never worked with an external AI vendor." },
+          { score: 2, label: "Uncertain", desc: "Worked with vendors before but unsure of timeline." },
+          { score: 3, label: "Possible", desc: "Vendor process exists but legal/IT typically takes 4-6 weeks." },
+          { score: 4, label: "Streamlined", desc: "Approved process. Legal/IT can move in parallel." },
+          { score: 5, label: "Fast-track", desc: "Pre-approved category or existing MSA. Days, not weeks." },
+        ],
+      },
+      {
+        id: "urgency", title: "Time-to-Market Pressure", weight: 1, icon: "Clock",
+        question: "Is there a concrete deadline or business pressure driving urgency for the prospect?",
+        riskNote: "Without urgency, pilots get deprioritized. But too much urgency with low readiness creates pressure to cut corners.",
+        options: [
+          { score: 1, label: "None", desc: '"Exploring for next year." No specific timeline.' },
+          { score: 2, label: "Low", desc: "General interest. No hard deadline." },
+          { score: 3, label: "Moderate", desc: "Launch in 9-12 months. Would help but isn't blocking." },
+          { score: 4, label: "High", desc: "Next tapeout in 6 months. Previous delays were costly." },
+          { score: 5, label: "Critical", desc: "Next quarter. Can't afford another respin. Board-level." },
+        ],
+      },
+    ];
+
+    const HYPOTHESES = {
+      A: { id: "A", title: "Post-Silicon Root Cause Acceleration", short: "Root Cause", desc: "Atlas reduces mean time to root cause for post-silicon validation failures by ≥30%." },
+      B: { id: "B", title: "Yield Defect Pattern Recognition", short: "Yield Patterns", desc: "Atlas identifies yield-limiting defect patterns the current analysis flow has not surfaced." },
+      C: { id: "C", title: "Simulation-to-Silicon Gap Closure", short: "Sim-to-Silicon", desc: "Atlas explains why simulation and silicon diverge, with physics-grounded reasoning." },
+    };
+
+    const DEMO_SCORES = { verification_gap: 5, data_availability: 4, champion_strength: 4, technical_fit: 5, org_readiness: 3, urgency: 4 };
+    const DEMO_PROSPECT = { name: "GPU Validation Team", vertical: "Semiconductor" };
+
+    const ICONS = { Target, Database, Users, Zap, Shield, Clock };
+
+    const DEFAULT_PORTFOLIO_PROSPECTS = [
+      {
+        id: "p1",
+        name: "GPU Validation Team",
+        vertical: "Semiconductor",
+        scores: { verification_gap: 5, data_availability: 4, champion_strength: 4, technical_fit: 5, org_readiness: 3, urgency: 4 },
+        notes: "Strong technical champion (VP Eng). AMD introduced us. Initial call went well — they're frustrated with current SPICE correlation. Follow up on data access timeline.",
+        outcome: "active",
+      },
+      {
+        id: "p2",
+        name: "Jet Engine Stress Testing",
+        vertical: "Aerospace & Defense",
+        scores: { verification_gap: 4, data_availability: 2, champion_strength: 3, technical_fit: 4, org_readiness: 2, urgency: 3 },
+        notes: "Reached out cold via LinkedIn. Interested but ITAR restrictions may be a blocker. Need to check if Arena has facility clearance.",
+        outcome: "active",
+      },
+      {
+        id: "p3",
+        name: "Cardiac Monitor Compliance",
+        vertical: "Medical Devices",
+        scores: { verification_gap: 3, data_availability: 3, champion_strength: 5, technical_fit: 3, org_readiness: 4, urgency: 5 },
+        notes: "Referral from Bausch & Lomb contact. VP Quality is personally invested — regulatory deadline in Q3. Data is available but FDA submission format may need conversion.",
+        outcome: "active",
+      },
+    ];
+
+    const OUTCOMES = [
+      { value: "active", label: "Active", color: "#c8ff00" },
+      { value: "won", label: "Won", color: "#4ade80" },
+      { value: "lost", label: "Lost", color: "#f87171" },
+      { value: "stalled", label: "Stalled", color: "#fbbf24" },
+    ];
+
+    // ══════════════════════════════════════════════
+    // ANALYSIS ENGINE
+    // ══════════════════════════════════════════════
+
+    function computeTotal(scores) {
+      return CRITERIA.reduce((sum, c) => sum + (scores[c.id] || 0) * c.weight, 0);
+    }
+
+    function getRiskLevel(total) {
+      if (total >= 48) return { level: "low", label: "Low Risk", color: "#4ade80", bg: "#0a2a1a", border: "#1a3a2a" };
+      if (total >= 36) return { level: "moderate", label: "Moderate Risk", color: "#fbbf24", bg: "#2a1a0a", border: "#3a2a1a" };
+      return { level: "high", label: "High Risk", color: "#f87171", bg: "#2a0a0a", border: "#3a1a1a" };
+    }
+
+    function recommendHypothesis(scores) {
+      const vg = scores.verification_gap || 0;
+      const da = scores.data_availability || 0;
+      const tf = scores.technical_fit || 0;
+
+      if (da >= 4 && tf >= 4 && vg >= 4) {
+        return { ...HYPOTHESES.A, reason: "Strong data availability and a well-quantified verification gap. Root cause acceleration is the most immediately measurable hypothesis — it produces a clear before/after metric that the champion can take to leadership. This profile resembles successful semiconductor pilots where rapid access to production data unlocked immediate technical wins." };
+      }
+      if (vg >= 4 && tf >= 4 && da <= 3) {
+        return { ...HYPOTHESES.C, reason: "The verification gap is well-articulated and the problem is clearly physics-grounded, but data access is limited. The sim-to-silicon gap hypothesis requires the least breadth of data to demonstrate value — it can work with targeted comparisons rather than full production datasets. Similar physics-heavy profiles in aerospace have seen strong wins with this approach." };
+      }
+      if (da >= 3 && tf >= 3) {
+        return { ...HYPOTHESES.B, reason: "Moderate data and technical signals. Yield defect pattern recognition can surface value from production test data without requiring deep integration into the customer's validation workflow. It's the lowest-friction entry point. This mirrors the early-stage medical device pilots where pattern detection unlocked compliance insights." };
+      }
+      if (vg >= 3) {
+        return { ...HYPOTHESES.A, reason: "The verification gap exists but isn't fully quantified yet. Root cause acceleration offers the clearest path to demonstrating Atlas's value in a way the customer can immediately recognize — faster answers to problems they're already spending time on. Early semiconductor prospects often started here and accelerated their quantification through discovery." };
+      }
+      return { ...HYPOTHESES.B, reason: "Given the current profile, start with the broadest hypothesis. Yield pattern recognition can surface unexpected findings from whatever data is available, which builds credibility and sharpens the verification gap for future engagement. This approach has proven effective with prospects early in their AI evaluation journey." };
+    }
+
+    function generateMitigations(scores) {
+      const mitigations = [];
+      const s = scores;
+
+      if ((s.verification_gap || 0) <= 3) {
+        mitigations.push({
+          risk: "Verification gap is not yet sharp enough",
+          priority: "high",
+          actions: [
+            "Schedule a dedicated 60-minute technical deep-dive before pilot kickoff, focused exclusively on where simulation and reality diverge",
+            "Ask the prospect to bring 2-3 specific examples of failures their current tools missed",
+            "Do not write the pilot hypothesis until this conversation has happened",
+          ],
+          deadline: "Before Week 0 kickoff",
+          owner: "Growth Engineer + prospect's technical lead",
+        });
+      }
+
+      if ((s.data_availability || 0) <= 3) {
+        mitigations.push({
+          risk: "Data access will likely delay the pilot",
+          priority: "critical",
+          actions: [
+            "Initiate legal/security review immediately — do not wait for formal pilot commitment",
+            "Offer a narrowly scoped data package (one product line, one timeframe) to reduce security review scope",
+            "Request sample data during discovery so Atlas engineering can validate format and ingestion before the clock starts",
+            (s.data_availability || 0) <= 2 ? "If real production data cannot be confirmed within 2 weeks, propose a Phase 0: a 2-week data access sprint before the pilot clock starts" : null,
+          ].filter(Boolean),
+          deadline: "Must be resolved before Week 1",
+          owner: "Growth Engineer + prospect's legal/security team",
+        });
+      }
+
+      if ((s.champion_strength || 0) <= 3) {
+        mitigations.push({
+          risk: "Champion may not have sufficient authority to convert pilot results into a deployment decision",
+          priority: "high",
+          actions: [
+            "Identify who owns the budget for validation tooling — get them in the kickoff meeting, even briefly",
+            "Produce a shareable artifact by end of Week 2 that the champion can present upward",
+            "Ask the champion directly: 'If this pilot succeeds, what happens next? Who makes that decision?'",
+            (s.champion_strength || 0) <= 2 ? "Consider whether there's a stronger internal sponsor. A pilot without executive visibility risks producing great results that nobody acts on." : null,
+          ].filter(Boolean),
+          deadline: "Before Week 0; reinforced at Week 2 checkpoint",
+          owner: "Growth Engineer + Arena sales lead",
+        });
+      }
+
+      if ((s.org_readiness || 0) <= 2) {
+        mitigations.push({
+          risk: "Organizational friction may consume the pilot timeline",
+          priority: "high",
+          actions: [
+            "Map the full vendor onboarding process before committing — who needs to approve what, and how long does each step take?",
+            "Identify whether Arena can operate under an existing MSA, NDA, or evaluation agreement rather than creating a new one",
+            "Build 2 weeks of buffer into the pilot timeline for organizational overhead",
+          ],
+          deadline: "Before formal commitment",
+          owner: "Growth Engineer + prospect's procurement/legal",
+        });
+      }
+
+      if ((s.urgency || 0) >= 4 && ((s.data_availability || 0) <= 3 || (s.org_readiness || 0) <= 3)) {
+        mitigations.push({
+          risk: "High urgency combined with low readiness creates pressure to cut corners",
+          priority: "warning",
+          actions: [
+            "Acknowledge the urgency but do not compress the qualification phase — a rushed pilot that fails is worse than a delayed pilot that succeeds",
+            "Propose a parallel track: start data/legal work immediately while continuing discovery",
+            "Set explicit expectations with the champion about what is achievable in 6 weeks given current readiness",
+          ],
+          deadline: "Address in first discovery conversation",
+          owner: "Growth Engineer",
+        });
+      }
+
+      return mitigations.sort((a, b) => {
+        const p = { critical: 0, high: 1, warning: 2 };
+        return (p[a.priority] || 3) - (p[b.priority] || 3);
+      });
+    }
+
+    function generateDiscoveryAgenda(scores) {
+      const questions = [];
+      const s = scores;
+
+      if ((s.verification_gap || 0) <= 3) {
+        questions.push({ priority: "critical", q: "Walk me through the last 3 failures your post-silicon validation caught late. What did they cost — in time, dollars, and downstream impact?" });
+        questions.push({ priority: "critical", q: "Where specifically does your simulation-to-silicon correlation break down? Can you show me an example?" });
+      }
+      if ((s.data_availability || 0) <= 3) {
+        questions.push({ priority: "critical", q: "What would it take to get Atlas access to 6 months of production validation data for one product line? Who approves that, and what's the realistic timeline?" });
+        questions.push({ priority: "high", q: "Is your test/validation data centralized, or does it live across different tools and teams? What format is it in?" });
+      }
+      if ((s.champion_strength || 0) <= 3) {
+        questions.push({ priority: "high", q: "If this pilot demonstrates 30% faster root cause analysis, who makes the decision to scale it? Can we get them in the room for 15 minutes at kickoff?" });
+      }
+      if ((s.technical_fit || 0) <= 3) {
+        questions.push({ priority: "critical", q: "Is the core problem you're facing a physics-grounded issue — something where real-world hardware behaves differently than your models predict? Or is it more of a workflow or tooling challenge?" });
+      }
+      if ((s.org_readiness || 0) <= 2) {
+        questions.push({ priority: "high", q: "What does your vendor evaluation process look like? How long does it typically take from 'we want to try this' to 'we have data access and approval'?" });
+      }
+
+      questions.push({ priority: "standard", q: "What does success look like for you personally — and for your organization — for a 6-week engagement?" });
+      questions.push({ priority: "standard", q: "How would Atlas insights need to integrate with your existing EDA tools and workflows?" });
+
+      return questions.slice(0, 7);
+    }
+
+    function generateTimeline(scores) {
+      const s = scores;
+      const weeks = [
+        {
+          week: "Week 0", phase: "Qualify & Prepare",
+          standard: "Hypothesis written, success metrics agreed, contacts assigned",
+          checkpoints: [],
+        },
+        {
+          week: "Weeks 1-2", phase: "Data Ingestion & Setup",
+          standard: "Atlas processes first real dataset, first anomaly surfaced",
+          checkpoints: [],
+        },
+        {
+          week: "Weeks 3-4", phase: "Core Verification",
+          standard: "Atlas operates against hypothesis, 2+ working sessions with customer team",
+          checkpoints: [],
+        },
+        {
+          week: "Week 5", phase: "Synthesize Results",
+          standard: "Full results review with customer, honest assessment delivered",
+          checkpoints: [],
+        },
+        {
+          week: "Week 6", phase: "Decide & Learn",
+          standard: "Customer decision, Pilot Learning Document completed",
+          checkpoints: [],
+        },
+      ];
+
+      if ((s.data_availability || 0) <= 3) {
+        weeks[0].checkpoints.push("⚠ Legal/security review must be initiated this week");
+        weeks[1].checkpoints.push("⚠ If data not received by day 3, escalate to champion");
+      }
+      if ((s.champion_strength || 0) <= 3) {
+        weeks[0].checkpoints.push("⚠ Executive sponsor must be identified and briefed");
+        weeks[1].checkpoints.push("⚠ Share early finding with champion to build momentum");
+      }
+      if ((s.org_readiness || 0) <= 2) {
+        weeks[0].checkpoints.push("⚠ Vendor onboarding process must be mapped and initiated");
+      }
+      if ((s.urgency || 0) >= 4) {
+        weeks[2].checkpoints.push("⚠ Interim results shared with champion's leadership — don't wait for Week 5");
+      }
+      if ((s.verification_gap || 0) <= 3) {
+        weeks[0].checkpoints.push("⚠ Technical deep-dive to sharpen hypothesis before kickoff");
+      }
+
+      return weeks;
+    }
+
+    function generateEarlyWarnings(scores) {
+      const warnings = [];
+      const s = scores;
+
+      if ((s.data_availability || 0) <= 3)
+        warnings.push({ trigger: "Data ingestion has not begun by end of Week 1", action: "Escalate to champion. The pilot cannot absorb more than 5 business days of data delay. If access won't be granted this week, pause the timeline." });
+      if ((s.champion_strength || 0) <= 3)
+        warnings.push({ trigger: "Champion cancels two consecutive check-ins", action: "The pilot is losing momentum. Produce an interim artifact immediately and request an executive review meeting. If the champion has been reassigned, identify a replacement before proceeding." });
+      if ((s.org_readiness || 0) <= 2)
+        warnings.push({ trigger: "Legal/security approval is still pending at Week 2", action: "Propose a scoped alternative: anonymized data, or a limited dataset that doesn't require full security review. Narrow the scope to keep the pilot alive." });
+
+      warnings.push({ trigger: "Scope requests expand beyond the original hypothesis", action: "Refer back to the hypothesis written at kickoff. Respond: 'That's a strong candidate for engagement two. Let's answer this question first.'" });
+      warnings.push({ trigger: "Customer team stops attending working sessions", action: "The pilot is producing results nobody is using. Check whether findings are reaching the right people. Adjust format or frequency of deliverables." });
+
+      return warnings.slice(0, 5);
+    }
+
+    function generateNextAction(scores, mitigations) {
+      if (mitigations.length === 0) {
+        return { action: "Move to scoping — assign an Arena engineer and schedule the hypothesis-writing session with the customer this week.", deadline: "This week", icon: "Zap" };
+      }
+
+      const top = mitigations[0];
+
+      if (top.priority === "critical" && top.risk.toLowerCase().includes("data")) {
+        return { action: "Initiate the legal/security review for data access today. This is the #1 pilot risk — every day of delay compresses the verification window.", deadline: top.deadline, icon: "Database" };
+      }
+      if (top.priority === "critical" && top.risk.toLowerCase().includes("verification gap")) {
+        return { action: "Schedule the technical deep-dive with the prospect's engineering lead. The pilot hypothesis cannot be written until this conversation happens.", deadline: top.deadline, icon: "Target" };
+      }
+      if (top.priority === "high" && top.risk.toLowerCase().includes("champion")) {
+        return { action: "Identify who owns the validation tooling budget and get a 15-minute slot with them at the kickoff meeting.", deadline: top.deadline, icon: "Users" };
+      }
+      if (top.priority === "high" && top.risk.toLowerCase().includes("organizational")) {
+        return { action: "Map the full vendor onboarding process — who approves what, how long each step takes — before committing to a timeline.", deadline: top.deadline, icon: "Shield" };
+      }
+
+      return { action: top.actions[0], deadline: top.deadline, icon: "AlertTriangle" };
+    }
+
+    function generatePatternInsights(scores, savedProspects) {
+      const insights = [];
+      const total = computeTotal(scores);
+      const riskLevel = getRiskLevel(total);
+
+      if (savedProspects && savedProspects.length > 0) {
+        const avgTotal = savedProspects.reduce((sum, p) => sum + computeTotal(p.scores), 0) / savedProspects.length;
+        const totalDiff = total - avgTotal;
+
+        if (totalDiff > 5) {
+          insights.push(`This prospect scores ${Math.round(totalDiff)} points above your pipeline average — a strong early indicator for rapid engagement.`);
+        } else if (totalDiff < -5) {
+          insights.push(`This prospect scores ${Math.round(Math.abs(totalDiff))} points below your pipeline average. Consider whether the qualification phase can strengthen the weaker signals.`);
+        }
+
+        const currentWeakCriteria = CRITERIA.filter(c => (scores[c.id] || 0) <= 2).map(c => c.id);
+        if (currentWeakCriteria.length > 0) {
+          const otherWeakMatches = savedProspects.filter(p =>
+            currentWeakCriteria.some(crit => (p.scores[crit] || 0) <= 2)
+          ).length;
+
+          if (otherWeakMatches > 0) {
+            insights.push(`${otherWeakMatches} of ${savedProspects.length} prospects in your portfolio share ${currentWeakCriteria.length === 1 ? 'this same risk' : 'similar risks'} — identifying a potential pattern in your qualification pipeline.`);
+          }
+        }
+
+        const prospects = [{ scores, vertical: "Current" }, ...savedProspects];
+        const byVertical = {};
+        prospects.forEach(p => {
+          const v = p.vertical || "Unknown";
+          if (!byVertical[v]) byVertical[v] = [];
+          byVertical[v].push(computeTotal(p.scores));
+        });
+
+        const verticalWithMultiple = Object.entries(byVertical).find(([_, scores_list]) => scores_list.length > 1);
+        if (verticalWithMultiple) {
+          const [vertical, scores_list] = verticalWithMultiple;
+          const avg = scores_list.reduce((a, b) => a + b, 0) / scores_list.length;
+          if (scores_list.length === 2) {
+            const diff = Math.abs(scores_list[0] - scores_list[1]);
+            if (diff > 8) {
+              insights.push(`Your ${vertical} prospects show high variance (${diff} pt spread), suggesting different maturity stages in that vertical's evaluation readiness.`);
+            }
+          }
+        }
+      }
+
+      return insights.length > 0 ? insights : null;
+    }
+
+    function generateSummary(scores, prospect, riskLevel, hypothesis, mitigations, savedProspects) {
+      const s = scores;
+      const total = computeTotal(scores);
+      const primaryRisks = mitigations.filter(m => m.priority === "critical" || m.priority === "high");
+
+      let summary = `This prospect presents a ${riskLevel.label.toLowerCase()} pilot opportunity`;
+      if (prospect.vertical) summary += ` in ${prospect.vertical}`;
+      summary += `. `;
+
+      if (primaryRisks.length === 0) {
+        summary += `All scoring criteria are strong. The recommended approach is to move quickly — assign engineering resources, write the hypothesis, and begin data ingestion within one week. `;
+        summary += `Hypothesis ${hypothesis.id} (${hypothesis.short}) offers the clearest path to demonstrable value.`;
+      } else if (primaryRisks.length === 1) {
+        summary += `The primary risk is ${primaryRisks[0].risk.toLowerCase()}. With targeted mitigation — ${primaryRisks[0].actions[0].toLowerCase()} — this pilot has a strong probability of success. `;
+        summary += `Recommended hypothesis: ${hypothesis.id} (${hypothesis.short}).`;
+      } else {
+        summary += `There are ${primaryRisks.length} risk areas requiring mitigation before kickoff: ${primaryRisks.map(r => r.risk.toLowerCase().split(" ").slice(0, 4).join(" ")).join(", and ")}. `;
+        summary += `Address these in discovery before committing engineering time. The recommended hypothesis is ${hypothesis.id} (${hypothesis.short}), ${hypothesis.reason.split(".")[0].toLowerCase()}.`;
+      }
+
+      return summary;
+    }
+
+    // ══════════════════════════════════════════════
+    // UI COMPONENTS
+    // ══════════════════════════════════════════════
+
+    function ProgressDots({ current, total }) {
+      return (
+        <div className="flex items-center justify-center gap-2 mb-8">
+          {Array.from({ length: total }, (_, i) => (
+            <div key={i} className={`h-2 rounded-full transition-all duration-300 ${i < current ? "w-8" : i === current ? "w-8" : "w-2"}`} style={{ backgroundColor: i <= current ? "#c8ff00" : "#333333" }} />
+          ))}
+        </div>
+      );
+    }
+
+    function WeightBadge({ weight }) {
+      return <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium" style={{ backgroundColor: "#222222", color: "#9ca3af" }}>{weight}x weight</span>;
+    }
+
+    function RiskGauge({ score, max, riskLevel }) {
+      const pct = (score / max) * 100;
+      const circumference = 2 * Math.PI * 54;
+      return (
+        <div className="flex flex-col items-center">
+          <div className="relative w-36 h-36">
+            <svg viewBox="0 0 120 120" className="w-full h-full -rotate-[135deg]">
+              <circle cx="60" cy="60" r="54" fill="none" stroke="#333333" strokeWidth="8" strokeDasharray={`${circumference * 0.75} ${circumference * 0.25}`} strokeLinecap="round" />
+              <circle cx="60" cy="60" r="54" fill="none" stroke={riskLevel.color} strokeWidth="8" strokeDasharray={`${circumference * 0.75 * (pct / 100)} ${circumference}`} strokeLinecap="round" className="transition-all duration-1000" />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="text-3xl font-bold" style={{ color: riskLevel.color }}>{score}</span>
+              <span className="text-xs" style={{ color: "#6b7280" }}>/ {max}</span>
+            </div>
+          </div>
+          <div className="mt-2 px-4 py-1 rounded-full text-sm font-bold" style={{ backgroundColor: riskLevel.bg, color: riskLevel.color }}>{riskLevel.label.toUpperCase()}</div>
+        </div>
+      );
+    }
+
+    function MitigationCard({ mitigation }) {
+      const colors = {
+        critical: { bg: "#2a0a0a", border: "#3a1a1a", badge: "bg-red-900 text-red-400", icon: "text-red-400" },
+        high: { bg: "#2a1a0a", border: "#3a2a1a", badge: "bg-amber-900 text-amber-400", icon: "text-amber-400" },
+        warning: { bg: "#0a1a2a", border: "#1a2a3a", badge: "bg-blue-900 text-blue-400", icon: "text-blue-400" }
+      };
+      const c = colors[mitigation.priority] || colors.warning;
+      return (
+        <div className="border rounded-xl p-4 mb-3 hover:shadow-md transition-shadow" style={{ backgroundColor: c.bg, borderColor: c.border }}>
+          <div className="flex items-start gap-2 mb-2">
+            <AlertTriangle size={14} className={`${c.icon} mt-0.5 flex-shrink-0`} />
+            <div>
+              <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${c.badge}`}>{mitigation.priority.toUpperCase()}</span>
+              <span className="text-sm font-semibold ml-2" style={{ color: "#ffffff" }}>{mitigation.risk}</span>
+            </div>
+          </div>
+          <div className="ml-6 space-y-1.5">
+            {mitigation.actions.map((a, i) => (
+              <div key={i} className="flex items-start gap-2">
+                <ArrowRight size={10} className="mt-1 flex-shrink-0" style={{ color: "#6b7280" }} />
+                <p className="text-xs leading-relaxed" style={{ color: "#9ca3af" }}>{a}</p>
+              </div>
+            ))}
+            <div className="flex gap-4 mt-2 pt-2" style={{ borderTopColor: "#222222", borderTopWidth: "1px" }}>
+              <p className="text-xs" style={{ color: "#6b7280" }}><strong>Deadline:</strong> {mitigation.deadline}</p>
+              <p className="text-xs" style={{ color: "#6b7280" }}><strong>Owner:</strong> {mitigation.owner}</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function TopNav({ onPortfolioClick, onNewClick, activeView }) {
+      return (
+        <div className="px-6 py-4 flex items-center justify-between" style={{ backgroundColor: "#0a0a0a", borderBottomColor: "#1a1a1a", borderBottomWidth: "1px" }}>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: "#c8ff00" }}>
+              <Target size={18} style={{ color: "#0a0a0a" }} />
+            </div>
+            <h1 className="text-lg font-bold" style={{ color: "#ffffff" }}>Atlas Pilot Success Planner</h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onPortfolioClick}
+              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${activeView === "portfolio" ? "" : ""}`}
+              style={{
+                backgroundColor: activeView === "portfolio" ? "#222222" : "transparent",
+                color: activeView === "portfolio" ? "#c8ff00" : "#9ca3af",
+                borderColor: activeView === "portfolio" ? "#333333" : "#333333",
+                borderWidth: "1px"
+              }}
+            >
+              <Layout size={14} /> Portfolio
+            </button>
+            <button
+              onClick={onNewClick}
+              className="px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2"
+              style={{ backgroundColor: "#c8ff00", color: "#0a0a0a" }}
+            >
+              <Plus size={14} /> New Assessment
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    function SidebarAssessment({ prospect, riskLevel, total, maxScore, isActive, onClick }) {
+      return (
+        <button
+          onClick={onClick}
+          className={`w-full text-left px-3 py-2.5 rounded-lg transition-all border mb-1.5`}
+          style={{
+            backgroundColor: isActive ? "#222222" : "transparent",
+            borderColor: isActive ? "#333333" : "#1a1a1a",
+            borderWidth: "1px"
+          }}
+        >
+          <div className="flex items-start gap-2">
+            <div className="mt-0.5 flex-shrink-0 w-2 h-2 rounded-full" style={{ backgroundColor: riskLevel.color }} />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold truncate" style={{ color: "#ffffff" }}>{prospect.name || "Untitled"}</p>
+              <p className="text-xs" style={{ color: "#6b7280" }}>{prospect.vertical}</p>
+              <p className="text-xs mt-0.5" style={{ color: "#6b7280" }}>{total}/{maxScore}</p>
+            </div>
+          </div>
+        </button>
+      );
+    }
+
+    function Sidebar({ prospects, activeId, onSelectProspect, onNew }) {
+      const [isOpen, setIsOpen] = useState(true);
+
+      return (
+        <>
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="lg:hidden fixed top-20 left-4 z-40 p-2 rounded-lg border"
+            style={{ backgroundColor: "#111111", borderColor: "#1a1a1a" }}
+          >
+            {isOpen ? <ChevronLeft size={18} style={{ color: "#c8ff00" }} /> : <Menu size={18} style={{ color: "#c8ff00" }} />}
+          </button>
+
+          <div className={`fixed lg:relative lg:block top-0 left-0 h-screen lg:h-auto w-64 flex flex-col transition-transform duration-300 z-30 lg:z-auto ${isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`} style={{ backgroundColor: "#111111", borderRightColor: "#1a1a1a", borderRightWidth: "1px" }}>
+            <div className="p-4" style={{ borderBottomColor: "#1a1a1a", borderBottomWidth: "1px" }}>
+              <h2 className="text-xs font-bold uppercase tracking-wide" style={{ color: "#6b7280" }}>Recent Assessments</h2>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-1">
+              {prospects.map((p) => {
+                const total = computeTotal(p.scores);
+                const maxScore = CRITERIA.reduce((s, c) => s + 5 * c.weight, 0);
+                const riskLevel = getRiskLevel(total);
+                return (
+                  <SidebarAssessment
+                    key={p.id}
+                    prospect={p}
+                    riskLevel={riskLevel}
+                    total={total}
+                    maxScore={maxScore}
+                    isActive={activeId === p.id}
+                    onClick={() => {
+                      onSelectProspect(p);
+                      setIsOpen(false);
+                    }}
+                  />
+                );
+              })}
+            </div>
+            <div className="p-4" style={{ borderTopColor: "#1a1a1a", borderTopWidth: "1px" }}>
+              <button
+                onClick={onNew}
+                className="w-full py-2 px-3 rounded-lg text-white text-sm font-medium transition-all flex items-center justify-center gap-2"
+                style={{ backgroundColor: "#c8ff00", color: "#0a0a0a" }}
+              >
+                <Plus size={14} /> New Assessment
+              </button>
+            </div>
+          </div>
+        </>
+      );
+    }
+
+    function PortfolioView({ prospects, onLoadProspect, onNewAssessment, onUpdateOutcome }) {
+      const sortedByTotal = prospects
+        .map(p => ({
+          ...p,
+          total: computeTotal(p.scores),
+          riskLevel: getRiskLevel(computeTotal(p.scores)),
+        }))
+        .sort((a, b) => b.total - a.total);
+
+      const maxScore = CRITERIA.reduce((s, c) => s + 5 * c.weight, 0);
+      const riskCounts = { low: 0, moderate: 0, high: 0 };
+      sortedByTotal.forEach(p => {
+        riskCounts[p.riskLevel.level]++;
+      });
+
+      const [selectedProspectIds, setSelectedProspectIds] = useState(() => {
+        const recent = [...sortedByTotal].reverse().slice(0, 2).map(p => p.id);
+        return new Set(recent);
+      });
+
+      const comparisonColors = ["#c8ff00", "#4ade80", "#fbbf24", "#f87171", "#8b5cf6"];
+      const comparisonProspectsData = sortedByTotal.filter(p => selectedProspectIds.has(p.id));
+
+      const radarComparisonData = CRITERIA.map(c => {
+        const item = { criterion: c.title.substring(0, 12) };
+        comparisonProspectsData.forEach((p, i) => {
+          item[`prospect${i}`] = p.scores[c.id] || 0;
+        });
+        item.fullMark = 5;
+        return item;
+      });
+
+      const [sortBy, setSortBy] = useState(null);
+      const [sortDesc, setSortDesc] = useState(false);
+
+      const handleSort = (field) => {
+        if (sortBy === field) {
+          setSortDesc(!sortDesc);
+        } else {
+          setSortBy(field);
+          setSortDesc(false);
+        }
+      };
+
+      const getOutcomeStyle = (outcome) => {
+        const found = OUTCOMES.find(o => o.value === outcome);
+        return found || OUTCOMES[0];
+      };
+
+      const getSortedProspects = () => {
+        let sorted = [...sortedByTotal];
+        if (sortBy) {
+          sorted.sort((a, b) => {
+            let aVal, bVal;
+            if (sortBy === "name") {
+              aVal = a.name;
+              bVal = b.name;
+            } else if (sortBy === "vertical") {
+              aVal = a.vertical;
+              bVal = b.vertical;
+            } else if (sortBy === "risk") {
+              const riskOrder = { low: 0, moderate: 1, high: 2 };
+              aVal = riskOrder[a.riskLevel.level];
+              bVal = riskOrder[b.riskLevel.level];
+            } else if (sortBy === "overall") {
+              aVal = a.total;
+              bVal = b.total;
+            } else if (sortBy.startsWith("score_")) {
+              const scoreKey = sortBy.replace("score_", "");
+              aVal = a.scores[scoreKey] || 0;
+              bVal = b.scores[scoreKey] || 0;
+            } else if (sortBy === "hypothesis") {
+              aVal = recommendHypothesis(a.scores).id;
+              bVal = recommendHypothesis(b.scores).id;
+            } else if (sortBy === "outcome") {
+              const outcomeOrder = { active: 0, won: 1, stalled: 2, lost: 3 };
+              aVal = outcomeOrder[a.outcome || "active"] ?? 0;
+              bVal = outcomeOrder[b.outcome || "active"] ?? 0;
+            } else {
+              return 0;
+            }
+
+            if (typeof aVal === "string") {
+              return sortDesc ? bVal.localeCompare(aVal) : aVal.localeCompare(bVal);
+            }
+            return sortDesc ? bVal - aVal : aVal - bVal;
+          });
+        }
+        return sorted;
+      };
+
+      return (
+        <div className="min-h-screen" style={{ backgroundColor: "#0a0a0a" }}>
+          <TopNav onPortfolioClick={() => {}} onNewClick={onNewAssessment} activeView="portfolio" />
+          <div className="max-w-7xl mx-auto p-4 pt-6">
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold mb-4" style={{ color: "#ffffff" }}>Pilot Portfolio</h2>
+
+              {sortedByTotal.length > 0 && (() => {
+                const avgScore = Math.round(sortedByTotal.reduce((s, p) => s + p.total, 0) / sortedByTotal.length);
+                const activeCount = sortedByTotal.filter(p => p.outcome === "active" || !p.outcome).length;
+                const wonCount = sortedByTotal.filter(p => p.outcome === "won").length;
+                const needsAttention = sortedByTotal.filter(p => {
+                  const t = computeTotal(p.scores);
+                  return getRiskLevel(t).level === "high" && (p.outcome === "active" || !p.outcome);
+                }).length;
+                return (
+                  <div className="rounded-xl border p-4 mb-4 flex items-center gap-8 flex-wrap" style={{ backgroundColor: "#111111", borderColor: "#1a1a1a" }}>
+                    <div>
+                      <p className="text-xs font-mono uppercase" style={{ color: "#6b7280" }}>Avg Readiness</p>
+                      <p className="text-lg font-bold" style={{ color: avgScore >= 48 ? "#4ade80" : avgScore >= 36 ? "#fbbf24" : "#f87171" }}>{avgScore}<span className="text-xs font-normal" style={{ color: "#6b7280" }}>/{maxScore}</span></p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-mono uppercase" style={{ color: "#6b7280" }}>Active Deals</p>
+                      <p className="text-lg font-bold" style={{ color: "#c8ff00" }}>{activeCount}</p>
+                    </div>
+                    {wonCount > 0 && (
+                      <div>
+                        <p className="text-xs font-mono uppercase" style={{ color: "#6b7280" }}>Win Rate</p>
+                        <p className="text-lg font-bold" style={{ color: "#4ade80" }}>{Math.round((wonCount / sortedByTotal.length) * 100)}%</p>
+                      </div>
+                    )}
+                    {needsAttention > 0 && (
+                      <div>
+                        <p className="text-xs font-mono uppercase" style={{ color: "#6b7280" }}>Needs Attention</p>
+                        <p className="text-lg font-bold" style={{ color: "#f87171" }}>{needsAttention}</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              <div className="grid grid-cols-3 gap-3 mb-6">
+                <div className="rounded-xl border p-4 shadow-sm hover:shadow-md transition-shadow" style={{ backgroundColor: "#111111", borderColor: "#1a1a1a" }}>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium" style={{ color: "#6b7280" }}>Low Risk</p>
+                      <p className="text-2xl font-bold" style={{ color: "#4ade80" }}>{riskCounts.low}</p>
+                    </div>
+                    <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ backgroundColor: "#0a2a1a" }}>
+                      <CheckCircle size={20} style={{ color: "#4ade80" }} />
+                    </div>
+                  </div>
+                </div>
+                <div className="rounded-xl border p-4 shadow-sm hover:shadow-md transition-shadow" style={{ backgroundColor: "#111111", borderColor: "#1a1a1a" }}>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium" style={{ color: "#6b7280" }}>Moderate Risk</p>
+                      <p className="text-2xl font-bold" style={{ color: "#fbbf24" }}>{riskCounts.moderate}</p>
+                    </div>
+                    <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ backgroundColor: "#2a1a0a" }}>
+                      <AlertTriangle size={20} style={{ color: "#fbbf24" }} />
+                    </div>
+                  </div>
+                </div>
+                <div className="rounded-xl border p-4 shadow-sm hover:shadow-md transition-shadow" style={{ backgroundColor: "#111111", borderColor: "#1a1a1a" }}>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium" style={{ color: "#6b7280" }}>High Risk</p>
+                      <p className="text-2xl font-bold" style={{ color: "#f87171" }}>{riskCounts.high}</p>
+                    </div>
+                    <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ backgroundColor: "#2a0a0a" }}>
+                      <Shield size={20} style={{ color: "#f87171" }} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {comparisonProspectsData.length > 0 && (
+                <div className="rounded-xl border p-6 mb-6 shadow-sm" style={{ backgroundColor: "#111111", borderColor: "#1a1a1a" }}>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-semibold flex items-center gap-2" style={{ color: "#ffffff" }}>
+                      <Layers size={16} style={{ color: "#c8ff00" }} /> Multi-Prospect Comparison
+                    </h3>
+                    <div className="flex gap-2 flex-wrap justify-end">
+                      {sortedByTotal.map((p, i) => (
+                        <button
+                          key={p.id}
+                          onClick={() => {
+                            const newSelected = new Set(selectedProspectIds);
+                            if (newSelected.has(p.id)) {
+                              newSelected.delete(p.id);
+                            } else {
+                              newSelected.add(p.id);
+                            }
+                            setSelectedProspectIds(newSelected);
+                          }}
+                          className={`flex items-center gap-2 px-2 py-1 rounded text-xs border transition-all`}
+                          style={{
+                            backgroundColor: selectedProspectIds.has(p.id) ? "#222222" : "transparent",
+                            borderColor: selectedProspectIds.has(p.id) ? "#333333" : "#333333",
+                            color: selectedProspectIds.has(p.id) ? "#c8ff00" : "#9ca3af"
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedProspectIds.has(p.id)}
+                            onChange={() => {}}
+                            className="w-3 h-3 cursor-pointer"
+                          />
+                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: comparisonColors[i % comparisonColors.length] }} />
+                          <span>{p.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {comparisonProspectsData.length > 0 && (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <RadarChart data={radarComparisonData} margin={{ top: 20, right: 30, bottom: 20, left: 30 }}>
+                        <PolarGrid stroke="#333333" />
+                        <PolarAngleAxis dataKey="criterion" tick={{ fill: "#9ca3af", fontSize: 9 }} />
+                        <PolarRadiusAxis domain={[0, 5]} tick={false} axisLine={false} />
+                        {comparisonProspectsData.map((p, i) => (
+                          <Radar
+                            key={i}
+                            dataKey={`prospect${i}`}
+                            stroke={comparisonColors[i % comparisonColors.length]}
+                            fill={comparisonColors[i % comparisonColors.length]}
+                            fillOpacity={0.15}
+                            strokeWidth={2}
+                            name={p.name}
+                          />
+                        ))}
+                        <Legend />
+                      </RadarChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              )}
+
+              <div className="rounded-xl border overflow-x-auto shadow-sm" style={{ backgroundColor: "#111111", borderColor: "#1a1a1a" }}>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr style={{ backgroundColor: "#0a0a0a", borderBottomColor: "#1a1a1a", borderBottomWidth: "1px" }}>
+                      <th className="px-4 py-3 text-left">
+                        <button onClick={() => handleSort("name")} className="font-semibold flex items-center gap-1" style={{ color: "#ffffff" }}>
+                          Prospect Name {sortBy === "name" && (sortDesc ? "↓" : "↑")}
+                        </button>
+                      </th>
+                      <th className="px-4 py-3 text-left">
+                        <button onClick={() => handleSort("vertical")} className="font-semibold flex items-center gap-1" style={{ color: "#ffffff" }}>
+                          Vertical {sortBy === "vertical" && (sortDesc ? "↓" : "↑")}
+                        </button>
+                      </th>
+                      <th className="px-4 py-3 text-left">
+                        <button onClick={() => handleSort("risk")} className="font-semibold flex items-center gap-1" style={{ color: "#ffffff" }}>
+                          Risk {sortBy === "risk" && (sortDesc ? "↓" : "↑")}
+                        </button>
+                      </th>
+                      <th className="px-4 py-3 text-center">
+                        <button onClick={() => handleSort("overall")} className="font-semibold flex items-center justify-center gap-1 w-full" style={{ color: "#ffffff" }}>
+                          Score {sortBy === "overall" && (sortDesc ? "↓" : "↑")}
+                        </button>
+                      </th>
+                      {CRITERIA.map(c => (
+                        <th key={c.id} className="px-3 py-3 text-center">
+                          <button onClick={() => handleSort(`score_${c.id}`)} className="font-semibold text-xs" style={{ color: "#ffffff" }}>
+                            {c.title.substring(0, 10)}{sortBy === `score_${c.id}` && (sortDesc ? "↓" : "↑")}
+                          </button>
+                        </th>
+                      ))}
+                      <th className="px-4 py-3 text-left">
+                        <button onClick={() => handleSort("hypothesis")} className="font-semibold text-xs" style={{ color: "#ffffff" }}>
+                          Hypothesis {sortBy === "hypothesis" && (sortDesc ? "↓" : "↑")}
+                        </button>
+                      </th>
+                      <th className="px-4 py-3 text-left">
+                        <button onClick={() => handleSort("outcome")} className="font-semibold text-xs" style={{ color: "#ffffff" }}>
+                          Outcome {sortBy === "outcome" && (sortDesc ? "↓" : "↑")}
+                        </button>
+                      </th>
+                      <th className="px-4 py-3 text-left">
+                        <span className="font-semibold text-xs" style={{ color: "#ffffff" }}>Notes</span>
+                      </th>
+                      <th className="px-4 py-3 text-center">
+                        <span className="font-semibold text-xs" style={{ color: "#ffffff" }}>Action</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {getSortedProspects().map((p, idx) => {
+                      const hyp = recommendHypothesis(p.scores);
+                      return (
+                        <tr key={p.id} className="transition-colors" style={{ backgroundColor: idx % 2 === 0 ? "#111111" : "#0a0a0a", borderBottomColor: "#1a1a1a", borderBottomWidth: "1px" }}>
+                          <td className="px-4 py-3 font-medium" style={{ color: "#ffffff" }}>{p.name}</td>
+                          <td className="px-4 py-3" style={{ color: "#9ca3af" }}>{p.vertical}</td>
+                          <td className="px-4 py-3">
+                            <span className="inline-block px-2 py-1 rounded text-xs font-medium" style={{ backgroundColor: p.riskLevel.bg, color: p.riskLevel.color }}>
+                              {p.riskLevel.label}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-center font-semibold" style={{ color: "#ffffff" }}>{p.total}/{maxScore}</td>
+                          {CRITERIA.map(c => (
+                            <td key={c.id} className="px-3 py-3 text-center font-medium text-xs" style={{ color: "#9ca3af" }}>
+                              {p.scores[c.id] || 0}/5
+                            </td>
+                          ))}
+                          <td className="px-4 py-3 font-semibold text-xs" style={{ color: "#9ca3af" }}>{hyp.id}</td>
+                          <td className="px-4 py-3">
+                            <select
+                              value={p.outcome || "active"}
+                              onChange={(e) => onUpdateOutcome(p.id, e.target.value)}
+                              className="text-xs rounded px-2 py-1 font-medium cursor-pointer focus:outline-none"
+                              style={{
+                                backgroundColor: "#0a0a0a",
+                                color: getOutcomeStyle(p.outcome || "active").color,
+                                borderColor: "#222222",
+                                borderWidth: "1px",
+                              }}
+                            >
+                              {OUTCOMES.map(o => (
+                                <option key={o.value} value={o.value}>{o.label}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="px-4 py-3 text-xs max-w-xs truncate" title={p.notes || ""} style={{ color: "#6b7280" }}>
+                            {p.notes ? p.notes.substring(0, 40) + "..." : "—"}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <button
+                              onClick={() => onLoadProspect(p)}
+                              className="font-medium text-xs hover:underline"
+                              style={{ color: "#c8ff00" }}
+                            >
+                              View
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ══════════════════════════════════════════════
+    // MAIN COMPONENT
+    // ══════════════════════════════════════════════
+
+    function PilotSuccessPlanner() {
+      const [step, setStep] = useState(-1);
+      const [scores, setScores] = useState({});
+      const [prospect, setProspect] = useState({ name: "", vertical: "" });
+      const [analyzing, setAnalyzing] = useState(false);
+      const [analyzeStage, setAnalyzeStage] = useState(0);
+      const [showResults, setShowResults] = useState(false);
+      const [portfolio, setPortfolio] = useState(DEFAULT_PORTFOLIO_PROSPECTS);
+      const [activeProspectId, setActiveProspectId] = useState(null);
+      const [view, setView] = useState("assessment");
+      const [toast, setToast] = useState(null);
+      const [notes, setNotes] = useState("");
+
+      const totalSteps = CRITERIA.length + 2;
+      const total = useMemo(() => computeTotal(scores), [scores]);
+      const maxScore = CRITERIA.reduce((s, c) => s + 5 * c.weight, 0);
+      const riskLevel = useMemo(() => getRiskLevel(total), [total]);
+      const hypothesis = useMemo(() => recommendHypothesis(scores), [scores]);
+      const mitigations = useMemo(() => generateMitigations(scores), [scores]);
+      const discoveryAgenda = useMemo(() => generateDiscoveryAgenda(scores), [scores]);
+      const timeline = useMemo(() => generateTimeline(scores), [scores]);
+      const earlyWarnings = useMemo(() => generateEarlyWarnings(scores), [scores]);
+      const patternInsights = useMemo(() => generatePatternInsights(scores, portfolio), [scores, portfolio]);
+      const summary = useMemo(() => generateSummary(scores, prospect, riskLevel, hypothesis, mitigations, portfolio), [scores, prospect, riskLevel, hypothesis, mitigations, portfolio]);
+      const nextAction = useMemo(() => generateNextAction(scores, mitigations), [scores, mitigations]);
+
+      const radarData = CRITERIA.map(c => ({
+        criterion: c.title.replace("Verification Gap Clarity", "Gap Clarity").replace("Data Availability", "Data").replace("Champion Strength", "Champion").replace("Technical Fit", "Tech Fit").replace("Organizational Readiness", "Org Ready").replace("Time-to-Market Pressure", "Urgency"),
+        score: scores[c.id] || 0,
+        fullMark: 5,
+      }));
+
+      const copyToClipboard = (text) => {
+        navigator.clipboard.writeText(text);
+      };
+
+      const generateShareSummary = () => {
+        const riskLabel = riskLevel.label.toLowerCase();
+        const hypothesisShort = hypothesis.short;
+        return `${prospect.name || "Prospect"} (${prospect.vertical}) — ${riskLabel.toUpperCase()} | ${hypothesis.id}: ${hypothesisShort}`;
+      };
+
+      const saveToPortfolio = () => {
+        const newProspect = {
+          id: `p${Date.now()}`,
+          name: prospect.name,
+          vertical: prospect.vertical,
+          scores: scores,
+          notes: notes,
+          outcome: "active",
+        };
+        setPortfolio([...portfolio, newProspect]);
+        setToast("Saved to portfolio");
+        setTimeout(() => setToast(null), 2500);
+      };
+
+      const updateProspectOutcome = (prospectId, newOutcome) => {
+        setPortfolio(prev => prev.map(p => p.id === prospectId ? { ...p, outcome: newOutcome } : p));
+      };
+
+      const startAnalysis = () => {
+        setAnalyzing(true);
+        setAnalyzeStage(0);
+        const stages = [700, 1400, 2100, 2800];
+        stages.forEach((delay, i) => setTimeout(() => setAnalyzeStage(i + 1), delay));
+        setTimeout(() => { setAnalyzing(false); setShowResults(true); setStep(CRITERIA.length + 1); }, 3200);
+      };
+
+      const loadDemo = () => {
+        setScores(DEMO_SCORES);
+        setProspect(DEMO_PROSPECT);
+        setNotes("");
+        setShowResults(false);
+        setAnalyzing(true);
+        setAnalyzeStage(0);
+        const stages = [500, 1000, 1500, 2000];
+        stages.forEach((delay, i) => setTimeout(() => setAnalyzeStage(i + 1), delay));
+        setTimeout(() => { setAnalyzing(false); setShowResults(true); setStep(CRITERIA.length + 1); }, 2500);
+      };
+
+      const reset = () => {
+        setScores({});
+        setProspect({ name: "", vertical: "" });
+        setNotes("");
+        setShowResults(false);
+        setAnalyzing(false);
+        setStep(-1);
+        setView("assessment");
+        setActiveProspectId(null);
+      };
+
+      const goTo = (s) => setStep(s);
+
+      const loadProspect = (p) => {
+        setScores(p.scores);
+        setProspect({ name: p.name, vertical: p.vertical });
+        setNotes(p.notes || "");
+        setActiveProspectId(p.id);
+        setShowResults(true);
+        setAnalyzing(false);
+        setAnalyzeStage(0);
+        setView("assessment");
+        setStep(CRITERIA.length + 1);
+      };
+
+      if (view === "portfolio") {
+        return <PortfolioView prospects={portfolio} onLoadProspect={loadProspect} onNewAssessment={reset} onUpdateOutcome={updateProspectOutcome} />;
+      }
+
+      if (analyzing) {
+        const stages = [
+          "Analyzing risk profile...",
+          "Selecting optimal pilot hypothesis...",
+          "Generating mitigation plan...",
+          "Building success roadmap...",
+        ];
+        return (
+          <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: "#0a0a0a" }}>
+            <div className="max-w-sm w-full text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-6" style={{ backgroundColor: "#222222" }}>
+                <Activity size={28} className="animate-spin" style={{ color: "#c8ff00" }} />
+              </div>
+              <h2 className="text-lg font-bold mb-6" style={{ color: "#ffffff" }}>Generating Pilot Success Plan</h2>
+              <div className="space-y-3 text-left max-w-xs mx-auto">
+                {stages.map((s, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    {analyzeStage > i ? (
+                      <CheckCircle size={16} className="flex-shrink-0" style={{ color: "#4ade80" }} />
+                    ) : analyzeStage === i ? (
+                      <RotateCcw size={16} className="animate-spin flex-shrink-0" style={{ color: "#c8ff00" }} />
+                    ) : (
+                      <div className="w-4 h-4 rounded-full border-2 flex-shrink-0" style={{ borderColor: "#333333" }} />
+                    )}
+                    <span className="text-sm" style={{ color: analyzeStage >= i ? "#9ca3af" : "#6b7280" }}>{s}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      if (step === -1) {
+        return (
+          <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: "#0a0a0a" }}>
+            <div className="max-w-lg w-full">
+              <div className="text-center mb-8">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium mb-4" style={{ backgroundColor: "#222222", color: "#6b7280" }}>INTERNAL TOOL</div>
+                <h1 className="text-3xl font-bold mb-2" style={{ color: "#ffffff" }}>Atlas Pilot Success Planner</h1>
+                <p className="text-sm leading-relaxed max-w-md mx-auto" style={{ color: "#9ca3af" }}>
+                  Assess a prospect's risk profile and generate a custom pilot success plan — including hypothesis selection, risk mitigations, discovery agenda, and timeline checkpoints.
+                </p>
+              </div>
+              <div className="rounded-xl shadow-sm border p-6 mb-4" style={{ backgroundColor: "#111111", borderColor: "#1a1a1a" }}>
+                <label className="block text-sm font-medium mb-1.5" style={{ color: "#ffffff" }}>Prospect / Company</label>
+                <input type="text" value={prospect.name} onChange={e => setProspect(p => ({ ...p, name: e.target.value }))} placeholder="e.g., GPU Validation Team" className="w-full px-3 py-2 rounded-lg text-sm mb-4 focus:outline-none focus:ring-2" style={{ backgroundColor: "#0a0a0a", borderColor: "#222222", borderWidth: "1px", color: "#ffffff", focusRingColor: "#c8ff00" }} />
+                <label className="block text-sm font-medium mb-1.5" style={{ color: "#ffffff" }}>Vertical</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {VERTICALS.map(v => (
+                    <button key={v} onClick={() => setProspect(p => ({ ...p, vertical: v }))} className="px-3 py-2 rounded-lg text-sm border transition-all" style={{ borderColor: prospect.vertical === v ? "#c8ff00" : "#222222", backgroundColor: prospect.vertical === v ? "#1a2a1a" : "transparent", color: prospect.vertical === v ? "#c8ff00" : "#9ca3af" }}>{v}</button>
+                  ))}
+                </div>
+              </div>
+              <button onClick={() => goTo(0)} disabled={!prospect.name || !prospect.vertical} className="w-full py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2" style={{ backgroundColor: prospect.name && prospect.vertical ? "#c8ff00" : "#333333", color: prospect.name && prospect.vertical ? "#0a0a0a" : "#6b7280" }}>
+                Begin Assessment <ChevronRight size={16} />
+              </button>
+              <button onClick={loadDemo} className="w-full mt-3 py-2.5 rounded-xl text-sm transition-all flex items-center justify-center gap-2" style={{ color: "#9ca3af", backgroundColor: "transparent" }}>
+                <Play size={14} /> Load example assessment
+              </button>
+              <button onClick={() => setView("portfolio")} className="w-full mt-2 py-2.5 rounded-xl text-sm transition-all flex items-center justify-center gap-2" style={{ color: "#c8ff00" }}>
+                <Layout size={14} /> View Portfolio
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      if (step >= 0 && step < CRITERIA.length && !showResults) {
+        const criterion = CRITERIA[step];
+        const IconComp = ICONS[criterion.icon];
+        const selected = scores[criterion.id];
+        const isLast = step === CRITERIA.length - 1;
+
+        return (
+          <div className="min-h-screen p-4" style={{ backgroundColor: "#0a0a0a" }}>
+            <div className="max-w-2xl mx-auto pt-4">
+              <ProgressDots current={step + 1} total={totalSteps} />
+              <div className="mb-6">
+                <div className="flex items-center gap-3 mb-1">
+                  {IconComp && <IconComp size={20} style={{ color: "#c8ff00" }} />}
+                  <h2 className="text-xl font-bold" style={{ color: "#ffffff" }}>{criterion.title}</h2>
+                  <WeightBadge weight={criterion.weight} />
+                </div>
+                <p className="text-sm mt-2 leading-relaxed" style={{ color: "#9ca3af" }}>{criterion.question}</p>
+              </div>
+              <div className="space-y-2 mb-6">
+                {criterion.options.map(opt => (
+                  <button key={opt.score} onClick={() => setScores(s => ({ ...s, [criterion.id]: opt.score }))} className="w-full text-left p-4 rounded-xl border-2 transition-all" style={{ borderColor: selected === opt.score ? "#c8ff00" : "#222222", backgroundColor: selected === opt.score ? "#1a2a1a" : "#111111" }}>
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 transition-all" style={{ backgroundColor: selected === opt.score ? "#c8ff00" : "#222222", color: selected === opt.score ? "#0a0a0a" : "#6b7280" }}>{opt.score}</div>
+                      <div>
+                        <div className="font-medium text-sm" style={{ color: "#ffffff" }}>{opt.label}</div>
+                        <div className="text-xs mt-0.5 italic" style={{ color: "#6b7280" }}>{opt.desc}</div>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+              <div className="rounded-lg p-3 mb-6" style={{ backgroundColor: "#111111", borderColor: "#1a1a1a", borderWidth: "1px" }}>
+                <p className="text-xs leading-relaxed" style={{ color: "#9ca3af" }}><strong>Context:</strong> {criterion.riskNote}</p>
+              </div>
+              <div className="flex gap-3">
+                <button onClick={() => goTo(step > 0 ? step - 1 : -1)} className="px-4 py-2.5 rounded-xl text-sm transition-all flex items-center gap-1" style={{ backgroundColor: "transparent", color: "#9ca3af" }}><ChevronLeft size={14} /> Back</button>
+                <button onClick={() => isLast ? startAnalysis() : goTo(step + 1)} disabled={selected === undefined} className="flex-1 py-2.5 rounded-xl font-medium transition-all flex items-center justify-center gap-1" style={{ backgroundColor: selected === undefined ? "#333333" : "#c8ff00", color: selected === undefined ? "#6b7280" : "#0a0a0a" }}>
+                  {isLast ? (<><Zap size={14} /> Generate Success Plan</>) : (<>Next <ChevronRight size={14} /></>)}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div className="min-h-screen flex" style={{ backgroundColor: "#0a0a0a" }}>
+          {toast && (
+            <div className="fixed top-4 right-4 z-50 px-4 py-2.5 rounded-lg shadow-lg text-sm font-medium flex items-center gap-2 animate-pulse" style={{ backgroundColor: "#111111", color: "#ffffff" }}>
+              <CheckCircle size={14} style={{ color: "#4ade80" }} /> {toast}
+            </div>
+          )}
+          <Sidebar prospects={portfolio} activeId={activeProspectId} onSelectProspect={loadProspect} onNew={reset} />
+
+          <div className="flex-1 flex flex-col">
+            <TopNav onPortfolioClick={() => setView("portfolio")} onNewClick={reset} activeView="assessment" />
+
+            <div className="flex-1 overflow-y-auto p-4 lg:p-6">
+              <div className="max-w-3xl mx-auto pt-2">
+                <div className="text-center mb-6">
+                  <h2 className="text-2xl font-bold mb-1" style={{ color: "#ffffff" }}>Pilot Success Plan</h2>
+                  {prospect.name && <p className="text-sm" style={{ color: "#6b7280" }}>{prospect.name} · {prospect.vertical}</p>}
+                </div>
+
+                {nextAction && (
+                  <div className="rounded-xl p-5 mb-4" style={{ backgroundColor: "#0a0a0a", border: "2px solid #c8ff00" }}>
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5" style={{ backgroundColor: "#c8ff00" }}>
+                        <Zap size={16} style={{ color: "#0a0a0a" }} />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="text-xs font-bold uppercase tracking-wide" style={{ color: "#c8ff00" }}>YOUR #1 PRIORITY</h3>
+                          <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: "#222222", color: "#9ca3af" }}>{nextAction.deadline}</span>
+                        </div>
+                        <p className="text-sm leading-relaxed" style={{ color: "#ffffff" }}>{nextAction.action}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="rounded-xl shadow-sm border p-6 mb-4 hover:shadow-md transition-shadow" style={{ backgroundColor: "#111111", borderColor: "#1a1a1a" }}>
+                  <div className="flex flex-col md:flex-row items-center gap-6">
+                    <RiskGauge score={total} max={maxScore} riskLevel={riskLevel} />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Activity size={16} style={{ color: "#c8ff00" }} />
+                        <h3 className="text-sm font-semibold" style={{ color: "#c8ff00" }}>Analysis</h3>
+                      </div>
+                      <p className="text-sm leading-relaxed" style={{ color: "#9ca3af" }}>{summary}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-xl p-4 mb-4 hover:shadow-md transition-shadow border" style={{ backgroundColor: "#0a1a2a", borderColor: "#1a2a3a" }}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Target size={16} style={{ color: "#c8ff00" }} />
+                    <h3 className="text-sm font-semibold" style={{ color: "#c8ff00" }}>Recommended Hypothesis: {hypothesis.id} — {hypothesis.title}</h3>
+                  </div>
+                  <p className="text-xs font-medium mb-2 italic" style={{ color: "#9ca3af" }}>"{hypothesis.desc}"</p>
+                  <p className="text-xs leading-relaxed" style={{ color: "#9ca3af" }}>{hypothesis.reason}</p>
+                </div>
+
+                {patternInsights && (
+                  <div className="rounded-xl p-4 mb-4 border" style={{ backgroundColor: "#111111", borderColor: "#1a1a1a" }}>
+                    <h3 className="text-sm font-semibold mb-2 flex items-center gap-2" style={{ color: "#c8ff00" }}>
+                      <TrendingUp size={16} /> Portfolio Insights
+                    </h3>
+                    <div className="space-y-1.5">
+                      {patternInsights.map((insight, i) => (
+                        <p key={i} className="text-xs leading-relaxed" style={{ color: "#9ca3af" }}>• {insight}</p>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div className="rounded-xl shadow-sm border p-4 hover:shadow-md transition-shadow" style={{ backgroundColor: "#111111", borderColor: "#1a1a1a" }}>
+                    <h3 className="text-sm font-semibold mb-2" style={{ color: "#ffffff" }}>Risk Profile</h3>
+                    <ResponsiveContainer width="100%" height={200}>
+                      <RadarChart data={radarData} margin={{ top: 10, right: 30, bottom: 10, left: 30 }}>
+                        <PolarGrid stroke="#333333" />
+                        <PolarAngleAxis dataKey="criterion" tick={{ fill: "#9ca3af", fontSize: 10 }} />
+                        <PolarRadiusAxis domain={[0, 5]} tick={false} axisLine={false} />
+                        <Radar dataKey="score" stroke="#c8ff00" fill="#c8ff00" fillOpacity={0.15} strokeWidth={2} />
+                      </RadarChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="rounded-xl shadow-sm border p-4 hover:shadow-md transition-shadow" style={{ backgroundColor: "#111111", borderColor: "#1a1a1a" }}>
+                    <h3 className="text-sm font-semibold mb-2" style={{ color: "#ffffff" }}>Score Breakdown</h3>
+                    <div className="space-y-2.5 mt-3">
+                      {CRITERIA.map(c => {
+                        const s = scores[c.id] || 0;
+                        const color = s <= 2 ? "#f87171" : s <= 3 ? "#fbbf24" : "#4ade80";
+                        return (
+                          <div key={c.id}>
+                            <div className="flex justify-between text-xs mb-0.5">
+                              <span style={{ color: "#9ca3af" }}>{c.title}</span>
+                              <span style={{ color }}>{s}/5 <span style={{ color: "#6b7280" }}>({c.weight}x)</span></span>
+                            </div>
+                            <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: "#222222" }}>
+                              <div className="h-full rounded-full transition-all duration-700" style={{ width: `${(s / 5) * 100}%`, backgroundColor: color }} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {mitigations.length > 0 && (
+                  <div className="mb-4">
+                    <h3 className="text-sm font-semibold mb-3 flex items-center gap-2" style={{ color: "#c8ff00" }}>
+                      <Shield size={16} /> Risk Mitigation Plan
+                    </h3>
+                    {mitigations.map((m, i) => <MitigationCard key={i} mitigation={m} />)}
+                  </div>
+                )}
+
+                <div className="rounded-xl shadow-sm border p-4 mb-4 hover:shadow-md transition-shadow" style={{ backgroundColor: "#111111", borderColor: "#1a1a1a" }}>
+                  <h3 className="text-sm font-semibold mb-3 flex items-center gap-2" style={{ color: "#ffffff" }}>
+                    <FileText size={16} style={{ color: "#c8ff00" }} /> Customized Discovery Agenda
+                  </h3>
+                  <p className="text-xs mb-3" style={{ color: "#6b7280" }}>Prioritized questions for the next discovery call, based on this prospect's risk profile.</p>
+                  <div className="space-y-2">
+                    {discoveryAgenda.map((item, i) => (
+                      <div key={i} className="flex items-start gap-2">
+                        <span className="text-xs font-bold mt-0.5 flex-shrink-0" style={{ color: item.priority === "critical" ? "#f87171" : item.priority === "high" ? "#fbbf24" : "#6b7280" }}>{i + 1}.</span>
+                        <p className="text-xs leading-relaxed" style={{ color: "#9ca3af" }}>{item.q}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-xl shadow-sm border p-4 mb-4 hover:shadow-md transition-shadow" style={{ backgroundColor: "#111111", borderColor: "#1a1a1a" }}>
+                  <h3 className="text-sm font-semibold mb-3 flex items-center gap-2" style={{ color: "#ffffff" }}>
+                    <Clock size={16} style={{ color: "#c8ff00" }} /> Pilot Timeline with Risk Checkpoints
+                  </h3>
+                  <div className="space-y-0">
+                    {timeline.map((w, i) => (
+                      <div key={i} className={`flex gap-3 ${i < timeline.length - 1 ? "pb-3" : ""}`}>
+                        <div className="flex flex-col items-center">
+                          <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: i === 0 ? "#c8ff00" : "#333333" }} />
+                          {i < timeline.length - 1 && <div className="w-px flex-1 bg-slate-200 mt-1" style={{ backgroundColor: "#222222" }} />}
+                        </div>
+                        <div className="flex-1 -mt-0.5">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <span className="text-xs font-bold" style={{ color: "#ffffff" }}>{w.week}</span>
+                            <span className="text-xs" style={{ color: "#6b7280" }}>— {w.phase}</span>
+                          </div>
+                          <p className="text-xs" style={{ color: "#6b7280" }}>{w.standard}</p>
+                          {w.checkpoints.map((cp, j) => (
+                            <p key={j} className="text-xs font-medium mt-1" style={{ color: "#fbbf24" }}>{cp}</p>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-xl shadow-sm border p-4 mb-4 hover:shadow-md transition-shadow" style={{ backgroundColor: "#111111", borderColor: "#1a1a1a" }}>
+                  <h3 className="text-sm font-semibold mb-3 flex items-center gap-2" style={{ color: "#ffffff" }}>
+                    <AlertTriangle size={16} style={{ color: "#c8ff00" }} /> Early Warning System
+                  </h3>
+                  <div className="space-y-3">
+                    {earlyWarnings.map((w, i) => (
+                      <div key={i} className="pl-3" style={{ borderLeftColor: "#fbbf24", borderLeftWidth: "2px" }}>
+                        <p className="text-xs font-semibold" style={{ color: "#ffffff" }}>If: {w.trigger}</p>
+                        <p className="text-xs mt-0.5" style={{ color: "#9ca3af" }}>Then: {w.action}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-xl shadow-sm border p-4 mb-4 hover:shadow-md transition-shadow" style={{ backgroundColor: "#111111", borderColor: "#1a1a1a" }}>
+                  <h3 className="text-sm font-semibold mb-3 flex items-center gap-2" style={{ color: "#ffffff" }}>
+                    <FileText size={16} style={{ color: "#c8ff00" }} /> Deal Notes
+                  </h3>
+                  <textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Add internal notes about this deal (auto-saved)..."
+                    className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 resize-none"
+                    style={{ backgroundColor: "#0a0a0a", borderColor: "#222222", borderWidth: "1px", color: "#ffffff" }}
+                    rows={3}
+                  />
+                  <p className="text-xs mt-2" style={{ color: "#6b7280" }}>Notes will auto-save to your portfolio.</p>
+                </div>
+
+                <div className="rounded-xl shadow-sm border p-4 mb-4 hover:shadow-md transition-shadow" style={{ backgroundColor: "#111111", borderColor: "#1a1a1a" }}>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-semibold flex items-center gap-2" style={{ color: "#ffffff" }}>
+                      <FileText size={16} style={{ color: "#c8ff00" }} /> Pilot Brief (copy/share)
+                    </h3>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => copyToClipboard(generateShareSummary())}
+                        className="p-2 rounded-lg transition-all"
+                        title="Copy short summary"
+                        style={{ color: "#6b7280", backgroundColor: "transparent" }}
+                      >
+                        <Share2 size={14} />
+                      </button>
+                      <button
+                        onClick={() => copyToClipboard(`PILOT SUCCESS PLAN — ${(prospect.name || "Prospect").toUpperCase()}\nVertical: ${prospect.vertical || "—"}\nRisk Level: ${riskLevel.label} (${total}/${maxScore})\nRecommended Hypothesis: ${hypothesis.id} — ${hypothesis.title}\n\nSCORES:\n${CRITERIA.map(c => `  ${c.title}: ${scores[c.id] || "—"}/5 (${c.weight}x)`).join("\n")}\n\nEXECUTIVE SUMMARY:\n${summary}\n\nKEY MITIGATIONS:\n${mitigations.length > 0 ? mitigations.map(m => `  [${m.priority.toUpperCase()}] ${m.risk}\n    → ${m.actions[0]}\n    Deadline: ${m.deadline}`).join("\n") : "  None required — proceed to scoping."}\n\nNEXT DISCOVERY QUESTIONS:\n${discoveryAgenda.slice(0, 4).map((q, i) => `  ${i + 1}. ${q.q}`).join("\n")}` )}
+                        className="p-2 rounded-lg transition-all"
+                        title="Copy full brief"
+                        style={{ color: "#6b7280", backgroundColor: "transparent" }}
+                      >
+                        <Copy size={14} />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="rounded-lg p-3 font-mono text-xs leading-relaxed whitespace-pre-line max-h-48 overflow-y-auto" style={{ backgroundColor: "#0a0a0a", color: "#6b7280" }}>
+{`PILOT SUCCESS PLAN — ${(prospect.name || "Prospect").toUpperCase()}
+Vertical: ${prospect.vertical || "—"}
+Risk Level: ${riskLevel.label} (${total}/${maxScore})
+Recommended Hypothesis: ${hypothesis.id} — ${hypothesis.title}
+
+SCORES:
+${CRITERIA.map(c => `  ${c.title}: ${scores[c.id] || "—"}/5 (${c.weight}x)`).join("\n")}
+
+EXECUTIVE SUMMARY:
+${summary}
+
+KEY MITIGATIONS:
+${mitigations.length > 0 ? mitigations.map(m => `  [${m.priority.toUpperCase()}] ${m.risk}\n    → ${m.actions[0]}\n    Deadline: ${m.deadline}`).join("\n") : "  None required — proceed to scoping."}
+
+NEXT DISCOVERY QUESTIONS:
+${discoveryAgenda.slice(0, 4).map((q, i) => `  ${i + 1}. ${q.q}`).join("\n")}`}
+                  </div>
+                </div>
+
+                <div className="flex gap-3 mb-8 flex-wrap">
+                  <button onClick={saveToPortfolio} className="flex-1 min-w-fit py-2.5 rounded-xl text-sm transition-all flex items-center justify-center gap-1 border" style={{ backgroundColor: "transparent", color: "#4ade80", borderColor: "#1a3a2a" }}><Bookmark size={14} /> Save to Portfolio</button>
+                  <button onClick={reset} className="flex-1 min-w-fit py-2.5 rounded-xl text-sm transition-all flex items-center justify-center gap-1 border" style={{ backgroundColor: "transparent", color: "#9ca3af", borderColor: "#222222" }}><RotateCcw size={14} /> New Assessment</button>
+                  <button onClick={() => { setShowResults(false); goTo(0); }} className="flex-1 min-w-fit py-2.5 rounded-xl text-sm transition-all flex items-center justify-center gap-1 border" style={{ backgroundColor: "transparent", color: "#c8ff00", borderColor: "#333333" }}><ChevronLeft size={14} /> Revise Scores</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(React.createElement(PilotSuccessPlanner));
+  </script>
+</body>
+</html>
