@@ -5,10 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Arena | Atlas Pilot Success Planner</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='12' fill='%230a0a0a'/><text x='50' y='68' font-size='48' text-anchor='middle' font-family='monospace' fill='%23c8ff00'>A</text></svg>">
-  <script crossorigin src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
-  <script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
-  <script crossorigin src="https://cdn.jsdelivr.net/npm/react-is@18.2.0/umd/react-is.production.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/recharts@2.12.7/umd/Recharts.min.js"></script>
+  <script type="importmap">
+  {
+    "imports": {
+      "react": "https://esm.sh/react@18.2.0",
+      "react-dom": "https://esm.sh/react-dom@18.2.0",
+      "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+      "react/jsx-runtime": "https://esm.sh/react@18.2.0/jsx-runtime",
+      "react-is": "https://esm.sh/react-is@18.2.0"
+    }
+  }
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.24.0/babel.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
@@ -31,7 +38,7 @@
 <body style="margin:0; background:#0a0a0a;">
   <div id="root"></div>
 
-  <script type="text/babel">
+  <script type="text/plain" id="app-code">
     const { useState, useMemo, useEffect, useCallback } = React;
     const { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ResponsiveContainer, Legend } = Recharts;
 
@@ -1650,6 +1657,21 @@ ${discoveryAgenda.slice(0, 4).map((q, i) => `  ${i + 1}. ${q.q}`).join("\n")}`}
 
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(React.createElement(PilotSuccessPlanner));
+  </script>
+
+  <script type="module">
+    import React from 'react';
+    import * as ReactDOMAll from 'react-dom';
+    import { createRoot } from 'react-dom/client';
+    import * as Recharts from 'https://esm.sh/recharts@2.12.7?external=react,react-dom,react-is';
+
+    window.React = React;
+    window.ReactDOM = { ...ReactDOMAll, createRoot };
+    window.Recharts = Recharts;
+
+    const code = document.getElementById('app-code').textContent;
+    const transformed = Babel.transform(code, { presets: ['react'] }).code;
+    (0, eval)(transformed);
   </script>
 </body>
 </html>
